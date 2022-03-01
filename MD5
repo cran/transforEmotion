@@ -1,0 +1,16 @@
+d677ba605d10f6648d197da78433e916 *DESCRIPTION
+967b75c97f08b27a8df427719dd7b1b5 *NAMESPACE
+d7e833f66723ee7a77d5bf29b52d1ad2 *NEWS
+b393b34653aeb12fa7ba9ba3965e1e7a *R/neo_ipip_extraversion.R
+086151613f48732d9e8ca1563b8c179e *R/python_setup.R
+7476b3f6c8154bbee46d5163d3ec32c2 *R/transformer_scores.R
+704b1f351264cf0d74b2bf11e0688842 *build/vignette.rds
+9a6ca8c07d2eaf39132f783636d5937f *data/neo_ipip_extraversion.RData
+c02cde6ef82c8d5266de0993227b3e66 *inst/CITATION
+f01094dfff0eae21f8fdf7328a038d3b *inst/doc/Python_Setup.R
+8d8e17f67e8b33a0eedd770cfc18f03f *inst/doc/Python_Setup.Rmd
+00a31d517bef825bf77f261f5dd9b529 *inst/doc/Python_Setup.pdf
+69cfbdbdaaa4085e8b2c98b87fd05dcb *man/neo_ipip_extraversion.Rd
+18aef5466582c8b510ebae22ed226159 *man/python_setup.Rd
+4fdcdc21efa2190e46fe403343f85f86 *man/transformer_scores.Rd
+8d8e17f67e8b33a0eedd770cfc18f03f *vignettes/Python_Setup.Rmd
