@@ -10,8 +10,7 @@ transformer_scores(
   multiple_classes = FALSE,
   transformer = c("cross-encoder-roberta", "cross-encoder-distilroberta",
     "facebook-bart"),
-  preprocess = TRUE,
-  path_to_python = NULL,
+  preprocess = FALSE,
   keep_in_env = TRUE,
   envir = 1
 )
@@ -70,15 +69,10 @@ Should basic preprocessing be applied?
 Includes making lowercase, keeping only alphanumeric characters,
 removing escape characters, removing repeated characters,
 and removing white space.
-Defaults to \code{TRUE}.
+Defaults to \code{FALSE}.
 Transformers generally are OK without preprocessing and handle
-many of these functions internally, so setting to \code{FALSE}
+many of these functions internally, so setting to \code{TRUE}
 will not change performance much}
-
-\item{path_to_python}{Character.
-Path to specify where "python.exe" is located on your computer.
-Defaults to \code{NULL}, which will use \code{\link[reticulate]{py_available}}
-to find available Python or Anaconda}
 
 \item{keep_in_env}{Boolean.
 Whether the classifier should be kept in your global environment.
@@ -97,16 +91,6 @@ Returns probabilities for the text classes
 \description{
 Uses sentiment analysis pipelines from \href{https://huggingface.co}{huggingface}
 to compute probabilities that the text corresponds to the specified classes
-}
-\details{
-This function requires that you have both Python and the 
-"transformers" module installed on your computer. For help installing Python 
-and Python modules, see \code{browseVignettes("transforEmotion")} and click on
-the "Python Setup" vignette.
-
-Once both Python and the "transformers" module are installed, the
-function will automatically download the necessary model to compute the
-scores.
 }
 \examples{
 # Load data
@@ -148,19 +132,25 @@ transformer_scores(
 
 }
 \references{
-# BART
+# BART \cr
 Lewis, M., Liu, Y., Goyal, N., Ghazvininejad, M., Mohamed, A., Levy, O., ... & Zettlemoyer, L. (2019).
 Bart: Denoising sequence-to-sequence pre-training for natural language generation, translation, and comprehension.
 \emph{arXiv preprint arXiv:1910.13461}.
 
-# RoBERTa
+# RoBERTa \cr
 Liu, Y., Ott, M., Goyal, N., Du, J., Joshi, M., Chen, D., ... & Stoyanov, V. (2019).
 Roberta: A robustly optimized bert pretraining approach.
 \emph{arXiv preprint arXiv:1907.11692}.
 
+# Zero-shot classification \cr
 Yin, W., Hay, J., & Roth, D. (2019).
 Benchmarking zero-shot text classification: Datasets, evaluation and entailment approach.
 \emph{arXiv preprint arXiv:1909.00161}.
+
+# MultiNLI dataset \cr
+Williams, A., Nangia, N., & Bowman, S. R. (2017).
+A broad-coverage challenge corpus for sentence understanding through inference.
+\emph{arXiv preprint arXiv:1704.05426}.
 }
 \author{
 Alexander P. Christensen <alexpaulchristensen@gmail.com>

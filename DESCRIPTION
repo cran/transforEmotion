@@ -1,7 +1,7 @@
 Package: transforEmotion
 Title: Sentiment Analysis for Text and Qualitative Data
-Version: 0.1.0
-Date: 2022-04-04
+Version: 0.1.1
+Date: 2022-05-11
 Authors@R: c(person("Alexander", "Christensen", email = "alexpaulchristensen@gmail.com", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-9798-7037")),
 	     person("Hudson", "Golino", email = "hfg9s@virginia.edu", role = "aut", comment = c(ORCID = "0000-0002-1601-1447")))
 Maintainer: Alexander Christensen <alexpaulchristensen@gmail.com>
@@ -14,9 +14,9 @@ Suggests: markdown, knitr, rmarkdown, rstudioapi
 VignetteBuilder: knitr
 RoxygenNote: 7.1.2
 NeedsCompilation: no
-Packaged: 2022-04-04 17:02:48 UTC; apchr
+Packaged: 2022-05-11 11:59:32 UTC; chria12
 Author: Alexander Christensen [aut, cre]
     (<https://orcid.org/0000-0002-9798-7037>),
   Hudson Golino [aut] (<https://orcid.org/0000-0002-1601-1447>)
 Repository: CRAN
-Date/Publication: 2022-04-04 21:40:02 UTC
+Date/Publication: 2022-05-11 12:30:02 UTC

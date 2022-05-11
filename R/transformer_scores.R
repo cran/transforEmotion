@@ -56,15 +56,10 @@
 #' Includes making lowercase, keeping only alphanumeric characters,
 #' removing escape characters, removing repeated characters,
 #' and removing white space.
-#' Defaults to \code{TRUE}.
+#' Defaults to \code{FALSE}.
 #' Transformers generally are OK without preprocessing and handle
-#' many of these functions internally, so setting to \code{FALSE}
+#' many of these functions internally, so setting to \code{TRUE}
 #' will not change performance much
-#' 
-#' @param path_to_python Character.
-#' Path to specify where "python.exe" is located on your computer.
-#' Defaults to \code{NULL}, which will use \code{\link[reticulate]{py_available}}
-#' to find available Python or Anaconda
 #' 
 #' @param keep_in_env Boolean.
 #' Whether the classifier should be kept in your global environment.
@@ -78,15 +73,6 @@
 #' Defaults to the global environment
 #'
 #' @return Returns probabilities for the text classes
-#' 
-#' @details This function requires that you have both Python and the 
-#' "transformers" module installed on your computer. For help installing Python 
-#' and Python modules, see \code{browseVignettes("transforEmotion")} and click on
-#' the "Python Setup" vignette.
-#' 
-#' Once both Python and the "transformers" module are installed, the
-#' function will automatically download the necessary model to compute the
-#' scores. 
 #'
 #' @author Alexander P. Christensen <alexpaulchristensen@gmail.com>
 #'
@@ -129,24 +115,30 @@
 #' }
 #' 
 #' @references
-#' # BART
+#' # BART \cr
 #' Lewis, M., Liu, Y., Goyal, N., Ghazvininejad, M., Mohamed, A., Levy, O., ... & Zettlemoyer, L. (2019).
 #' Bart: Denoising sequence-to-sequence pre-training for natural language generation, translation, and comprehension.
 #' \emph{arXiv preprint arXiv:1910.13461}.
 #' 
-#' # RoBERTa
+#' # RoBERTa \cr
 #' Liu, Y., Ott, M., Goyal, N., Du, J., Joshi, M., Chen, D., ... & Stoyanov, V. (2019).
 #' Roberta: A robustly optimized bert pretraining approach.
 #' \emph{arXiv preprint arXiv:1907.11692}.
 #' 
+#' # Zero-shot classification \cr
 #' Yin, W., Hay, J., & Roth, D. (2019).
 #' Benchmarking zero-shot text classification: Datasets, evaluation and entailment approach.
 #' \emph{arXiv preprint arXiv:1909.00161}.
 #' 
+#' # MultiNLI dataset \cr
+#' Williams, A., Nangia, N., & Bowman, S. R. (2017).
+#' A broad-coverage challenge corpus for sentence understanding through inference.
+#' \emph{arXiv preprint arXiv:1704.05426}. 
+#' 
 #' @export
 #'
 # Transformer Scores
-# Updated 09.03.2022
+# Updated 14.04.2022
 transformer_scores <- function(
   text, classes,
   multiple_classes = FALSE,
@@ -155,8 +147,7 @@ transformer_scores <- function(
     "cross-encoder-distilroberta",
     "facebook-bart"
   ),
-  preprocess = TRUE,
-  path_to_python = NULL,
+  preprocess = FALSE,
   keep_in_env = TRUE,
   envir = 1
 )
@@ -186,17 +177,19 @@ transformer_scores <- function(
     classifier <- get(transformer, envir = as.environment(envir))
   }else{
     
-    # Setup Python
-    path <- python_setup(path_to_python)
-    
-    # If path is NULL, error
-    if(is.null(path)){
-      return(NULL)
-    }
+    # Run setup for miniconda
+    setup_miniconda()
     
     # Check if 'transformers' module is available
     if(!reticulate::py_module_available("transformers")){
-      message("'transformers' module is not available.\n\nPlease install in Python: `pip install transformers`\n\nFor help, see the \"Python Setup\" vignette in `browseVignettes(\"transforEmotion\")`\n")
+      
+      # Run setup for modules
+      setup_modules()
+      
+      # Import 'transformers' module
+      message("Importing transformers module...")
+      transformers <- reticulate::import("transformers")
+      
     }else{
       
       # Check for 'transformers' module in environment
@@ -211,6 +204,8 @@ transformer_scores <- function(
       }
         
     }
+    
+    
     
     # Check for custom transformer
     if(transformer %in% c(
