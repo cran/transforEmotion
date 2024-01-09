@@ -1,30 +1,59 @@
-#' Install Miniconda
+#' Check if the "transforEmotion" conda environment exists
 #'
-#' @description Installs miniconda
+#' This function checks if the "transforEmotion" conda environment exists by
+#' running the command "conda env list" and searching for the environment name
+#' in the output.
 #'
-#' @details Installs miniconda using \code{\link[reticulate]{install_miniconda}}
+#' @return A logical value indicating whether the "transforEmotion" conda
+#' environment exists.
+#'
+
+conda_check <- function(){
+  env_list <- reticulate::conda_list()$name
+  tE_env <- sum(grepl("transforEmotion", env_list))
+  return (tE_env!=0)
+}
+
+#' Install Miniconda and activate the transforEmotion environment
+#'
+#' @description Installs miniconda and activates the transforEmotion environment
+#'
+#' @details Installs miniconda using \code{\link[reticulate]{install_miniconda}} and activates the transforEmotion environment using \code{\link[reticulate]{use_condaenv}}. If the transforEmotion environment does not exist, it will be created using \code{\link[reticulate]{conda_create}}.
 #'
 #' @author Alexander P. Christensen <alexpaulchristensen@gmail.com>
+#'         Aleksandar Tomašević <atomashevic@gmail.com>
 #' 
 #' @export
 #'
 # Install miniconda
-# Updated 13.04.2022
+# Updated 15.11.2023
 setup_miniconda <- function()
 {
   
   # Install miniconda
   path_to_miniconda <- try(
-    reticulate::install_miniconda(),
+    install_miniconda(),
     silent = TRUE
   )
   
-  # Check for try-error
-  if(any(class(path_to_miniconda) != "try-error")){
-    
-    # Give user the deets
-    message("\nTo uninstall miniconda, use `reticulate::miniconda_uninstall()`")
-    
+  if(any(class(path_to_miniconda) != "try-error")){   
+  message("\nTo uninstall miniconda, use `reticulate::miniconda_uninstall()`")
   }
+
+  # Create transformEmotion enviroment if it doesn't exist
+  te_ENV <- conda_check()
+  if (!te_ENV){
+  print("Creating 'transforEmotion' environment...")
+  path_to_env <- try(
+    conda_create("transforEmotion"),
+    silent = TRUE
+  )
+  }
+  # Activate the environment
+
+  reticulate::use_condaenv("transforEmotion", required = TRUE)
   
+  print("Installing missing Python libraries...")
+    setup_modules()
 }
+

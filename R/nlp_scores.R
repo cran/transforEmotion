@@ -1,7 +1,8 @@
 #' Natural Language Processing Scores
 #'
 #' @description Natural Language Processing using word embeddings to compute
-#' semantic similarities (cosine) of text and specified classes
+#' semantic similarities (cosine; see
+#' \code{\link[LSAfun]{costring}}) of text and specified classes
 #' 
 #' @param text Character vector or list.
 #' Text in a vector or list data format
@@ -12,43 +13,34 @@
 #' @param semantic_space Character vector.
 #' The semantic space used to compute the distances between words
 #' (more than one allowed). Here's a list of the semantic spaces:
+#' \describe{
 #' 
-#' \itemize{
-#' 
-#' \item{\code{"baroni"}}
-#' {Combination of British National Corpus, ukWaC corpus, and a 2009
+#' \item{\code{"baroni"}}{Combination of British National Corpus, ukWaC corpus, and a 2009
 #' Wikipedia dump. Space created using continuous bag of words algorithm
 #' using a context window size of 11 words (5 left and right)
 #' and 400 dimensions. Best word2vec model according to
 #' Baroni, Dinu, & Kruszewski (2014)}
 #' 
-#' \item{\code{"cbow"}}
-#' {Combination of British National Corpus, ukWaC corpus, and a 2009
+#' \item{\code{"cbow"}}{Combination of British National Corpus, ukWaC corpus, and a 2009
 #' Wikipedia dump. Space created using continuous bag of words algorithm with
 #' a context window size of 5 (2 left and right) and 300 dimensions}
 #' 
-#' \item{\code{"cbow_ukwac"}}
-#' {ukWaC corpus with the continuous bag of words algorithm with
+#' \item{\code{"cbow_ukwac"}}{ukWaC corpus with the continuous bag of words algorithm with
 #' a context window size of 5 (2 left and right) and 400 dimensions}
 #' 
-#' \item{\code{"en100"}}
-#' {Combination of British National Corpus, ukWaC corpus, and a 2009
+#' \item{\code{"en100"}}{Combination of British National Corpus, ukWaC corpus, and a 2009
 #' Wikipedia dump. 100,000 most frequent words. Uses moving window model
 #' with a size of 5 (2 to the left and right). Positive pointwise mutual
 #' information and singular value decomposition was used to reduce the
 #' space to 300 dimensions}
 #' 
-#' \item{\code{"glove"}}
-#' {\href{https://dumps.wikimedia.org/}{Wikipedia 2014 dump} and \href{https://catalog.ldc.upenn.edu/LDC2011T07}{Gigaword 5} with 400,000
+#' \item{\code{"glove"}}{\href{https://dumps.wikimedia.org/}{Wikipedia 2014 dump} and \href{https://catalog.ldc.upenn.edu/LDC2011T07}{Gigaword 5} with 400,000
 #' words (300 dimensions). Uses co-occurrence of words in text
 #' documents (uses cosine similarity)}
 #' 
-#' \item{\code{"tasa"}}
-#' {Latent Semantic Analysis space from TASA corpus all (300 dimensions).
-#' Uses co-occurrence of words in text documents (uses cosine similarity)}
+#' \item{\code{"tasa"}}{Latent Semantic Analysis space from TASA corpus all (300 dimensions).Uses co-occurrence of words in text documents (uses cosine similarity)}
 #' 
 #' }
-#' 
 #' @param preprocess Boolean.
 #' Should basic preprocessing be applied?
 #' Includes making lowercase, keeping only alphanumeric characters,
@@ -76,6 +68,7 @@
 #' 
 #' @author Alexander P. Christensen <alexpaulchristensen@gmail.com>
 #'
+#' @importFrom utils capture.output
 #' @examples
 #' # Load data
 #' data(neo_ipip_extraversion)
@@ -162,7 +155,7 @@
 #' @export
 #'
 # NLP Scores
-# Updated 05.03.2022
+# Updated 13.05.2022
 nlp_scores <- function(
   text, classes,
   semantic_space = c(
@@ -199,45 +192,34 @@ nlp_scores <- function(
   # Check for semantic space in environment
   if(!exists(semantic_space, envir = as.environment(envir))){
     
-    # Identify OSF link
-    osf_link <- switch(
+    # Authorize Google Drive
+    googledrive::drive_auth()
+    
+    # Identify Google Drive link
+    drive_link <- switch(
       semantic_space,
-      "baroni" = "ztxjc",
-      "cbow" = "3nfha",
-      "cbow_ukwac" = "zxkjb",
-      "en100" = "f2jv5",
-      "glove" = "e3js4",
-      "tasa" = "3kvmq"
+      "baroni" = "1bsDJDs11sBJxc3g2jIcHx7CRZLCPp0or",
+      "cbow" = "16XV3wkSG9Gkki35kGTDz8ulwKZgVMi90",
+      "cbow_ukwac" = "1kQBIkpJS0wHU3l_N-R8K4nFVWDFeCvYt",
+      "en100" = "1Ii98-iBgd_bscXJNxX1QRI18Y11QUMYn",
+      "glove" = "1FMqS0GiIL1KXG5HQFns62IUeYtcP1bKC",
+      "tasa" = "16ISxg7IiQk1LGX6dZkVMbM_cxG9CP1DS"
     )
     
-    # Check if semantic space exists
-    if(
-      !paste(semantic_space, "rdata", sep = ".") %in% # Saved semantic space
-      tolower(list.files(tempdir())) # Temporary directory
-    ){
-      
-      # Download semantic space (if not found)
-      space_file <- suppressMessages(
-        osfr::osf_download(
-          osfr::osf_retrieve_file(
-            osf_link
-          ),
-          path = tempdir(),
-          progress = TRUE
-        )
+    # Let user know semantic space is downloading
+    message("Downloading semantic space...", appendLF = FALSE)
+    
+    # Download semantic space
+    space_file <- suppressMessages(
+      googledrive::drive_download(
+        googledrive::as_id(drive_link),
+        path = paste(tempdir(), semantic_space, sep = "\\"),
+        overwrite = TRUE
       )
-      
-    }else{
-      
-      # Create dummy space file list
-      space_file <- list()
-      space_file$local_path <- paste(
-        tempdir(), "\\",
-        semantic_space, ".RData",
-        sep = ""
-      )
-      
-    }
+    )
+    
+    # Let user know downloading is finished
+    message("done")
     
     # Let user know semantic space is loading
     message("Loading semantic space...", appendLF = FALSE)
@@ -278,37 +260,51 @@ nlp_scores <- function(
   }
   
   # Split sentences into individual Words
-  split_list <- lapply(text, strsplit, split = " ")
+  split_text <- lapply(text, strsplit, split = " ")
+  
+  # Perform basic preprocessing on classes
+  if(isTRUE(preprocess)){
+    classes <- preprocess_text( # Internal function. See `utils-transforEmotion`
+      classes, remove_stop = remove_stop
+    )
+  }
+  
+  # Split sentences into individual words
+  split_classes <- lapply(classes, strsplit, split = " ")
   
   # Shrink semantic space to only unique words
   ## Obtain unique words
-  unique_words <- unique(unlist(split_list))
+  unique_words <- unique(
+    c(
+      unlist(split_text),
+      unlist(split_classes)
+    )
+  )
   ## Obtain words that exist in space
   space_index <- na.omit(match(
     unique_words, row.names(space)
   ))
-  ## Obtain classes that exist in space
-  class_index <- match(
-    classes, row.names(space)
-  )
-  ## Report if any classes are not in semantic space
-  if(any(is.na(class_index))){
-    
-    ### Bad classes
-    bad_classes <- classes[is.na(class_index)]
-    
-    ### Message about bad classes
-    bad_classes_message(bad_classes)
-    
-    ### Remove bad classes
-    classes <- classes[!is.na(class_index)]
-    class_index <- class_index[!is.na(class_index)]
-    
-  }
+  # ## Obtain classes that exist in space
+  # class_index <- match(
+  #   classes, row.names(space)
+  # )
+  # ## Report if any classes are not in semantic space
+  # if(any(is.na(class_index))){
+  #   
+  #   ### Bad classes
+  #   bad_classes <- classes[is.na(class_index)]
+  #   
+  #   ### Message about bad classes
+  #   bad_classes_message(bad_classes)
+  #   
+  #   ### Remove bad classes
+  #   classes <- classes[!is.na(class_index)]
+  #   class_index <- class_index[!is.na(class_index)]
+  #   
+  # }
   ## Shrink space
   shrink_space <- space[c(
-    space_index, # Words in text
-    class_index # Words in classes
+    space_index # Words in text and classes
   ),]
   
   # Remove space
@@ -321,11 +317,17 @@ nlp_scores <- function(
   scores <- pbapply::pblapply(text, function(x){
     
     # Obtain semantic similarity
-    scores <- suppressWarnings(
-      LSAfun::multicostring(
-        x = x, # Text
-        y = classes, # Classes
-        tvectors = shrink_space # Semantic space
+    sink <- capture.output(
+      scores <- unlist(
+        lapply(classes, function(y){
+          suppressWarnings(
+            LSAfun::costring(
+              x = x, # Text
+              y = y, # Classes
+              tvectors = shrink_space # Semantic space
+            )
+          )
+        })
       )
     )
     

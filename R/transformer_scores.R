@@ -18,17 +18,15 @@
 #' Specific zero-shot sentiment analysis transformer
 #' to be used. Default options:
 #' 
-#' \itemize{
+#' \describe{
 #' 
-#' \item{\code{"cross-encoder-roberta"}}
-#' {Uses \href{https://huggingface.co/cross-encoder/nli-roberta-base}{Cross-Encoder's Natural Language Interface RoBERTa Base}
+#' \item{\code{"cross-encoder-roberta"}}{Uses \href{https://huggingface.co/cross-encoder/nli-roberta-base}{Cross-Encoder's Natural Language Interface RoBERTa Base}
 #' zero-shot classification model trained on the
 #' \href{https://nlp.stanford.edu/projects/snli/}{Stanford Natural Language Inference}
 #' (SNLI) corpus and 
 #' \href{https://huggingface.co/datasets/multi_nli}{MultiNLI} datasets}
 #' 
-#' \item{\code{"cross-encoder-distilroberta"}}
-#' {Uses \href{https://huggingface.co/cross-encoder/nli-distilroberta-base}{Cross-Encoder's Natural Language Interface DistilRoBERTa Base}
+#' \item{\code{"cross-encoder-distilroberta"}}{Uses \href{https://huggingface.co/cross-encoder/nli-distilroberta-base}{Cross-Encoder's Natural Language Interface DistilRoBERTa Base}
 #' zero-shot classification model trained on the
 #' \href{https://nlp.stanford.edu/projects/snli/}{Stanford Natural Language Inference}
 #' (SNLI) corpus and 
@@ -37,8 +35,7 @@
 #' that sacrifices some accuracy for much faster speed (see 
 #' \href{https://www.sbert.net/docs/pretrained_cross-encoders.html#nli}{https://www.sbert.net/docs/pretrained_cross-encoders.html#nli})}
 #' 
-#' \item{\code{"facebook-bart"}}
-#' {Uses \href{https://huggingface.co/facebook/bart-large-mnli}{Facebook's BART Large}
+#' \item{\code{"facebook-bart"}}{Uses \href{https://huggingface.co/facebook/bart-large-mnli}{Facebook's BART Large}
 #' zero-shot classification model trained on the
 #' \href{https://huggingface.co/datasets/multi_nli}{Multi-Genre Natural Language
 #' Inference} (MultiNLI) dataset}
@@ -180,16 +177,16 @@ transformer_scores <- function(
     # Run setup for miniconda
     setup_miniconda()
     
-    # Check if 'transformers' module is available
-    if(!reticulate::py_module_available("transformers")){
+    # Check if 'torch' and 'transformers' module are available
+    if(!(reticulate::py_module_available("transformers") & reticulate::py_module_available("torch"))){
       
       # Run setup for modules
       setup_modules()
       
-      # Import 'transformers' module
-      message("Importing transformers module...")
+      # Import 'transformers' and 'torch' module
+      message("Importing transformers and torch modules...")
       transformers <- reticulate::import("transformers")
-      
+      torch <- reticulate::import("torch")
     }else{
       
       # Check for 'transformers' module in environment

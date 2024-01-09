@@ -1,22 +1,30 @@
 Package: transforEmotion
-Title: Sentiment Analysis for Text and Qualitative Data
-Version: 0.1.1
-Date: 2022-05-11
-Authors@R: c(person("Alexander", "Christensen", email = "alexpaulchristensen@gmail.com", role = c("aut", "cre"), comment = c(ORCID = "0000-0002-9798-7037")),
-	     person("Hudson", "Golino", email = "hfg9s@virginia.edu", role = "aut", comment = c(ORCID = "0000-0002-1601-1447")))
-Maintainer: Alexander Christensen <alexpaulchristensen@gmail.com>
-Description: Implements sentiment analysis using huggingface <https://huggingface.co> transformer zero-shot classification model pipelines. The default pipeline is Cross-Encoder's DistilRoBERTa <https://huggingface.co/cross-encoder/nli-distilroberta-base> trained on the Stanford Natural Language Inference <https://nlp.stanford.edu/projects/snli/> and Multi-Genre Natural Language Inference <https://huggingface.co/datasets/multi_nli> datasets. Using similar models, zero-shot classification transformers have demonstrated superior performance relative to other natural language processing models <arXiv:1909.00161>. All other zero-shot classification model pipelines can be implemented using their model name from <https://huggingface.co/models?pipeline_tag=zero-shot-classification>}.
-Depends: R (>= 3.5.0)
+Title: Sentiment Analysis for Text, Image and Video using Transformer
+        Models
+Version: 0.1.4
+Date: 2024-01-08
+Authors@R: c(person("Alexander", "Christensen", email = "alexpaulchristensen@gmail.com",
+              role = "aut", comment = c(ORCID = "0000-0002-9798-7037")),
+	           person("Hudson", "Golino", email = "hfg9s@virginia.edu", role = "aut",
+	            comment = c(ORCID = "0000-0002-1601-1447")),
+	           person("Aleksandar", "Tomašević", email = "atomashevic@gmail.com", role = c("aut", "cre"),
+	           comment = c(ORCID = "0000-0003-4863-6051")))
+Maintainer: Aleksandar Tomašević <atomashevic@gmail.com>
+Description: Implements sentiment analysis using huggingface <https://huggingface.co> transformer zero-shot classification model pipelines for text and image data. The default text pipeline is Cross-Encoder's DistilRoBERTa <https://huggingface.co/cross-encoder/nli-distilroberta-base> and default image/video pipeline is Open AI's CLIP  <https://huggingface.co/openai/clip-vit-base-patch32>. All other zero-shot classification model pipelines can be implemented using their model name from <https://huggingface.co/models?pipeline_tag=zero-shot-classification>.
 License: GPL (>= 3.0)
 Encoding: UTF-8
-Imports: reticulate, pbapply, osfr, LSAfun, dplyr, remotes
-Suggests: markdown, knitr, rmarkdown, rstudioapi
+Imports: reticulate, pbapply, googledrive, LSAfun, dplyr, remotes,
+        Matrix
+Suggests: markdown, knitr, rmarkdown, rstudioapi, testthat (>= 3.0.0)
 VignetteBuilder: knitr
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3
+Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2022-05-11 11:59:32 UTC; chria12
-Author: Alexander Christensen [aut, cre]
-    (<https://orcid.org/0000-0002-9798-7037>),
-  Hudson Golino [aut] (<https://orcid.org/0000-0002-1601-1447>)
+Packaged: 2024-01-09 11:04:25 UTC; aleksandar
+Author: Alexander Christensen [aut] (<https://orcid.org/0000-0002-9798-7037>),
+  Hudson Golino [aut] (<https://orcid.org/0000-0002-1601-1447>),
+  Aleksandar Tomašević [aut, cre]
+    (<https://orcid.org/0000-0003-4863-6051>)
+Depends: R (>= 3.5.0)
 Repository: CRAN
-Date/Publication: 2022-05-11 12:30:02 UTC
+Date/Publication: 2024-01-09 12:40:02 UTC

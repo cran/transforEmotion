@@ -19,10 +19,10 @@
 #'
 #' @author Alexander P. Christensen <alexpaulchristensen@gmail.com>
 #' 
-#' @export
 #'
 # Install modules
-# Updated 13.04.2022
+# Updated 11.12.2023
+
 setup_modules <- function()
 {
   
@@ -30,15 +30,16 @@ setup_modules <- function()
   message("\nInstalling modules for 'transforEmotion'...")
   
   Sys.sleep(1) # one second pause before the console explodes with text
-  
-  # Actually install the modules
-  reticulate::conda_install(
+    reticulate::conda_install("transforEmotion", 
     packages = c(
       "torch", "torchvision",
       "torchaudio", "tensorflow",
-      "transformers"
+      "transformers",
+      "pytube",
+      "pytz",
+      "pandas",
+      "opencv-python"
     ),
     pip = TRUE
   )
-  
 }
