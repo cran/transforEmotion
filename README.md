@@ -1,6 +1,8 @@
-### CRAN 0.1.0 | GitHub 0.1.4
+### CRAN 0.1.4 | GitHub 0.1.5
 
-[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![R-CMD-check](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml/badge.svg)](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml) [![Downloads Total](https://cranlogs.r-pkg.org/badges/grand-total/transforEmotion?color=brightgreen)](https://cran.r-project.org/package=transforEmotion) [![Downloads per month](http://cranlogs.r-pkg.org/badges/transforEmotion?color=brightgreen)](https://cran.r-project.org/package=transforEmotion) [![DOI](https://zenodo.org/badge/464199787.svg)](https://zenodo.org/doi/10.5281/zenodo.10471354)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![R-CMD-check](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml/badge.svg)](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml) [![Downloads Total](https://cranlogs.r-pkg.org/badges/grand-total/transforEmotion?color=brightgreen)](https://cran.r-project.org/package=transforEmotion) 
+
+<!--[![Downloads per month](http://cranlogs.r-pkg.org/badges/transforEmotion)](https://cran.r-project.org/package=transforEmotion) [![DOI](https://zenodo.org/badge/464199787.svg)](https://zenodo.org/doi/10.5281/zenodo.10471354) -->
 
 
 ## transforEmotion: Sentiment Analysis for Text, Image and Video Using Transformer Models
@@ -20,6 +22,14 @@ With `transforEmotion` you can use cutting-edge transformer models for zero-shot
 <!-- Implements sentiment analysis using [huggingface](https://huggingface.co/) transformer zero-shot classification model pipelines. The default pipeline for text is [Cross-Encoder's DistilRoBERTa](https://huggingface.co/cross-encoder/nli-distilroberta-base) trained on the [Stanford Natural Language Inference](https://huggingface.co/datasets/snli) (SNLI) and [Multi-Genre Natural Language Inference](https://huggingface.co/datasets/multi_nli) (MultiNLI) datasets. Using similar models, zero-shot classification transformers have demonstrated superior performance relative to other natural language processing models (Yin, Hay, & Roth, [2019](https://arxiv.org/abs/1909.00161)). All other zero-shot classification model pipelines can be implemented using their model name from https://huggingface.co/models?pipeline_tag=zero-shot-classification. -->
 
 ## How to Install
+
+You can find the latest stable version on [CRAN](https://cran.r-project.org/package=transforEmotion). Install it in R with:
+
+```R
+install.packages("transforEmotion")
+```
+
+If you want to use the latest development version, you can install it from GitHub using the `devtools` package.
 
 ```R
 if(!"devtools" %in% row.names(installed.packages())){
@@ -42,6 +52,10 @@ After loading package **for the first time**, you need to setup the Python virtu
 # Run Python setup
 setup_miniconda()
 ```
+
+> [!WARNING]
+> If you using [radian](https://github.com/randy3k/radian) console in VSCode or in a terminal emulator, you won't be able to set up the transforEmotion package. Radian is written in Python and (in most cases) already runs in your default Python environment. This prevents transforEmotion package from setting up the new virtual environment and installing the correct versions of necessary Python packages. Switch to default R console and everything should work fine.
+
 
 ## Text Example
 
@@ -115,7 +129,7 @@ Path can be either local or an URL. Here's an example of using a URL of Mona Lis
 ```R
 
 # Image URL or local filepath
-image <- "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Leonardo_da_Vinci_-_Mona_Lisa.jpg/401px-Leonardo_da_Vinci_-_Mona_Lisa.jpg"
+image <- 'https://cdn.mos.cms.futurecdn.net/xRqbwS4odpkSQscn3jHECh-650-80.jpg'
 
 # Array of emotion labels
 emotions <- c("excitement", "happiness", "pride", "anger", "fear", "sadness", "neutral")

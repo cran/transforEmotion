@@ -10,6 +10,7 @@ transformer_scores(
   multiple_classes = FALSE,
   transformer = c("cross-encoder-roberta", "cross-encoder-distilroberta",
     "facebook-bart"),
+  device = c("auto", "cpu", "cuda"),
   preprocess = FALSE,
   keep_in_env = TRUE,
   envir = 1
@@ -36,17 +37,17 @@ to be used. Default options:
 \item{\code{"cross-encoder-roberta"}}{Uses \href{https://huggingface.co/cross-encoder/nli-roberta-base}{Cross-Encoder's Natural Language Interface RoBERTa Base}
 zero-shot classification model trained on the
 \href{https://nlp.stanford.edu/projects/snli/}{Stanford Natural Language Inference}
-(SNLI) corpus and 
+(SNLI) corpus and
 \href{https://huggingface.co/datasets/multi_nli}{MultiNLI} datasets}
 
 \item{\code{"cross-encoder-distilroberta"}}{Uses \href{https://huggingface.co/cross-encoder/nli-distilroberta-base}{Cross-Encoder's Natural Language Interface DistilRoBERTa Base}
 zero-shot classification model trained on the
 \href{https://nlp.stanford.edu/projects/snli/}{Stanford Natural Language Inference}
-(SNLI) corpus and 
+(SNLI) corpus and
 \href{https://huggingface.co/datasets/multi_nli}{MultiNLI} datasets. The DistilRoBERTa
 is intended to be a smaller, more lightweight version of \code{"cross-encoder-roberta"},
-that sacrifices some accuracy for much faster speed (see 
-\href{https://www.sbert.net/docs/pretrained_cross-encoders.html#nli}{https://www.sbert.net/docs/pretrained_cross-encoders.html#nli})}
+that sacrifices some accuracy for much faster speed (see
+\href{https://www.sbert.net/docs/cross_encoder/pretrained_models.html#nli}{https://www.sbert.net/docs/cross_encoder/pretrained_models.html#nli})}
 
 \item{\code{"facebook-bart"}}{Uses \href{https://huggingface.co/facebook/bart-large-mnli}{Facebook's BART Large}
 zero-shot classification model trained on the
@@ -60,6 +61,12 @@ Defaults to \code{"cross-encoder-distilroberta"}
 Also allows any zero-shot classification models with a pipeline
 from \href{https://huggingface.co/models?pipeline_tag=zero-shot-classification}{huggingface}
 to be used by using the specified name (e.g., \code{"typeform/distilbert-base-uncased-mnli"}; see Examples)}
+
+\item{device}{Character.
+Whether to use CPU or GPU for inference.
+Defaults to \code{"auto"} which will use
+GPU over CPU (if CUDA-capable GPU is setup).
+Set to \code{"cpu"} to perform over CPU}
 
 \item{preprocess}{Boolean.
 Should basic preprocessing be applied?
@@ -93,7 +100,7 @@ to compute probabilities that the text corresponds to the specified classes
 # Load data
 data(neo_ipip_extraversion)
 
-# Example text 
+# Example text
 text <- neo_ipip_extraversion$friendliness[1:5]
 
 \dontrun{
