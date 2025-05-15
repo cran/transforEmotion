@@ -1,4 +1,4 @@
-### CRAN 0.1.4 | GitHub 0.1.5
+### CRAN 0.1.5 | GitHub 0.1.6
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![R-CMD-check](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml/badge.svg)](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml) [![Downloads Total](https://cranlogs.r-pkg.org/badges/grand-total/transforEmotion?color=brightgreen)](https://cran.r-project.org/package=transforEmotion) 
 
@@ -12,7 +12,7 @@
   <img src="man/figures/logo.png" alt="Logo" width="35%" style="display: block; margin: 0 auto;">
 </div>
 
-With `transforEmotion` you can use cutting-edge transformer models for zero-shot emotion classification of text, image, and video in R, *all without the need for a GPU, subscriptions, paid services, or using Python*.
+With `transforEmotion` you can use cutting-edge transformer models for zero-shot emotion classification of text, image, and video in R, *all without the need for a GPU, subscriptions, paid services, or using Python*. All data is processed locally on your machine, and nothing is sent to any external server or third-party service. This ensures full privacy for your data.
 
 - [How to install the package?](#how-to-install)
 - [How to run sentiment analysis on text?](#text-example)
@@ -52,6 +52,12 @@ After loading package **for the first time**, you need to setup the Python virtu
 # Run Python setup
 setup_miniconda()
 ```
+
+You will be prompted to install GPU libraries. If you have an NVIDIA GPU, select "[Y]es" to install GPU libraries. If you don't have an NVIDIA GPU, select "[N]o" to proceed with CPU-only installation.
+
+You will gain access to all functionalities of the package even without GPU, but be aware that some functions will be significantly slower.
+
+If you have doubts whether you should install GPU libraries, see [GPU Support](#gpu-support) section below.
 
 > [!WARNING]
 > If you using [radian](https://github.com/randy3k/radian) console in VSCode or in a terminal emulator, you won't be able to set up the transforEmotion package. Radian is written in Python and (in most cases) already runs in your default Python environment. This prevents transforEmotion package from setting up the new virtual environment and installing the correct versions of necessary Python packages. Switch to default R console and everything should work fine.
@@ -120,6 +126,51 @@ transformer_scores(
 )
 ```
 
+## RAG 
+
+The `rag` function  is designed to enhance text generation using Retrieval-Augmented Generation (RAG) techniques. This function allows users to input text data or specify a path to local PDF files, which are then used to retrieve relevant documents.
+
+The rag function supports various large language models (LLMs), including TinyLLAMA, LLAMA-2, Mistral-7B, Orca-2, and Phi-2, each offering different levels of computational efficiency and quality. The default model is TinyLLAMA, which is the fastest model.
+
+Here's an example based on the decription of this package. First, we specify the text data.
+
+```R
+text <- "With `transforEmotion` you can use cutting-edge transformer models for zero-shot emotion
+        classification of text, image, and video in R, *all without the need for a GPU,
+        subscriptions, paid services, or using Python. Implements sentiment analysis
+        using [huggingface](https://huggingface.co/) transformer zero-shot classification model pipelines.
+        The default pipeline for text is
+        [Cross-Encoder's DistilRoBERTa](https://huggingface.co/cross-encoder/nli-distilroberta-base)
+        trained on the [Stanford Natural Language Inference](https://huggingface.co/datasets/snli) (SNLI) and
+        [Multi-Genre Natural Language Inference](https://huggingface.co/datasets/multi_nli) (MultiNLI) datasets.
+        Using similar models, zero-shot classification transformers have demonstrated
+        superior performance relative to other natural language processing models
+        (Yin, Hay, & Roth, [2019](https://arxiv.org/abs/1909.00161)).
+        All other zero-shot classification model pipelines can be implemented using their model name
+        from https://huggingface.co/models?pipeline_tag=zero-shot-classification." 
+```
+
+And then we run the `rag` function.
+
+```R
+ rag(text, query = "What is the use case for transforEmotion package?")
+```
+
+This code will provide the output similar to this one.
+
+```
+The use case for transforEmotion package is to use cutting-edge transformer
+models forzero-shot emotion classification of text, image, and video in R,
+without the need for a GPU, subscriptions, paid services, or using Python.
+This package implements sentiment analysis using the Cross-Encoder's DistilRoBERTa
+model trained on the Stanford Natural Language Inference (SNLI) and MultiNLI datasets.
+Using similar models, zero-shot classification transformers have demonstrated
+superior performance relative to other natural language processing models
+(Yin, Hay, & Roth, [2019](https://arxiv.org/abs/1909.00161)).
+The transforEmotion package can be used to implement these models and other
+zero-shot classification model pipelines from the HuggingFace library.> 
+```
+
 ## Image Example
 
 For Facial Expression Recognition (FER) task from images we use Open AI's [CLIP](https://huggingface.co/openai/clip-vit-base-patch32) transformer model. Two input arguments are needed: the path to image and list of emotion labels.
@@ -134,21 +185,21 @@ image <- 'https://cdn.mos.cms.futurecdn.net/xRqbwS4odpkSQscn3jHECh-650-80.jpg'
 # Array of emotion labels
 emotions <- c("excitement", "happiness", "pride", "anger", "fear", "sadness", "neutral")
 
-# Run FER
-image_scores(image, emotions)
+# Run FER with base model
+image_scores(image, emotions, model = "oai-base")
 ```
 
 You can define up to 10 emotions. The output is a data frame with 1 row and columns corresponding to emotions. The values are FER scores for each emotion.
 
 If there is no face detected in the image, the output will be a 0x0 data frame.
 
-If there are mulitple faces detected in the image, by default the function will return the FER scores for the larget (focal) face. Alternative is to select the face on the left or the right side of the image. This can be done by specifying the `face_selection` argument.
+If there are multiple faces detected in the image, by default the function will return the FER scores for the largest (focal) face. Alternatively, you can select the face on the left or the right side of the image by specifying the `face_selection` argument.
 
 ## Video Example
 
 Video processing works by extracting frames from the video and then running the image processing function on each frame. Two input arguments are needed: the path to video and list of emotion labels.
 
-Path can be either local filepath or a **YouTube** URL. Support for other video hosting platforms is not yet implemented.
+Path can be either a local filepath or a **YouTube** URL. Support for other video hosting platforms is not yet implemented.
 
 ```R
 # Video URL or local filepath
@@ -157,14 +208,38 @@ video_url <- "https://www.youtube.com/watch?v=hdYNcv-chgY&ab_channel=Conservativ
 # Array of emotion labels
 emotions <- c("excitement", "happiness", "pride", "anger", "fear", "sadness", "neutral")
 
-# Run FER on `nframes` of the video
+# Run FER on `nframes` of the video with large model
 result <- video_scores(video_url, classes = emotions, 
                     nframes = 10, save_video = TRUE,
                     save_frames = TRUE, video_name = 'boris-johnson',
-                    start = 10, end = 120)
+                    start = 10, end = 120, model = "oai-large")
 ```            
 
-Working with videos is more computationally complex. This example extracts only 10 frames from the video and I shouldn't take longer than few minutes on an average laptop without GPU (depending on your internet connection needed to download the entire video and CLIP model). In research applicatons, we will usually extract 100-300 frames from the video. This can take much longer, so pantience is advised while waiting for the results. 
+Working with videos is more computationally complex. This example extracts only 10 frames from the video and shouldn't take longer than a few minutes on an average laptop without GPU (depending on your internet connection needed to download the entire video and CLIP model). In research applications, we will usually extract 100-300 frames from the video. This can take much longer, so patience is advised while waiting for the results.
+
+### Available Models
+
+The `image_scores` and `video_scores` functions support different models. The available models are:
+
+- `oai-base`: "openai/clip-vit-base-patch32" - A base model that is faster but less accurate. Requires ~2GB of RAM.
+- `oai-large`: "openai/clip-vit-large-patch14" - A larger model that is more accurate but slower. Requires ~4GB of RAM.
+- `eva-8B`: "BAAI/EVA-CLIP-8B-448" - A very large model that has been quantized to 4-bit precision for reduced memory usage (requires ~8GB of RAM instead of the original ~32GB).
+- `jina-v2`: "jinaai/jina-clip-v2" - Another large model with high accuracy but requires more resources (~6GB of RAM).
+
+> **Note:** The memory requirements listed above are approximate and represent the minimum RAM needed. For optimal performance, we recommend having at least 16GB of system RAM when using any of these models. If you're processing videos or multiple images in batch, more RAM might be needed. When using GPU acceleration, similar VRAM requirements apply. We recommend using 'oai-base' or 'oai-large' for most applications as they provide a good balance between accuracy and resource usage.
+
+## GPU Support
+
+When running the `setup_miniconda()` function, you will be prompted to install GPU libraries. If you select "[Y]es" when prompted to install GPU libraries, make sure you have:
+
+1. An NVIDIA GPU (GTX 1060 or newer)
+2. CUDA Toolkit 11.7+ installed
+3. Updated NVIDIA drivers
+4. GCC/G++ version 9 or newer (Linux only)
+
+Without these requirements, the GPU installation will likely fail. If you're unsure, select "no" to proceed with CPU-only installation. 
+
+If GPU installation fails, you can try running the `setup_modules()` function and selection "[N]o" when prompted to install GPU libraries.
 
 ## References
 

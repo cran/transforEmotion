@@ -106,6 +106,10 @@
 #'  similarity_top_k = 5
 #')}
 #'
+#' @section Data Privacy:
+#'   All processing is done locally with the downloaded model,
+#'   and your text is never sent to any remote server or third-party.
+#'
 #' @export
 #'
 # Retrieval-augmented generation
@@ -157,27 +161,34 @@ rag <- function(
   }else{device <- match.arg(device)}
 
   # Run setup for modules
-  setup_modules()
+  # setup_modules()
 
   # Check for llama_index in environment
   if(!exists("llama_index", envir = as.environment(envir))){
-
-    # Import 'llama-index'
-    message("Importing llama-index module...")
-
-    # Determine if 'llama-index-legacy' exists
-    if("llama-index-legacy" %in% reticulate::py_list_packages()$package){
-
-      # {llama-index} >= 0.10.5
-      llama_index <- reticulate::import("llama_index.legacy")
-
-    }else{
-
-      # {llama-index} < 0.10.5
-      llama_index <- reticulate::import("llama_index")
-
+    
+    # Try to import llama-index
+    llama_index <- try(
+        if("llama-index-legacy" %in% reticulate::py_list_packages()$package) {
+            # {llama-index} >= 0.10.5
+            reticulate::import("llama_index.legacy")
+        } else {
+            # {llama-index} < 0.10.5
+            reticulate::import("llama_index")
+        }, silent = TRUE
+    )
+    
+    # If import fails, try setting up modules
+    if(inherits(llama_index, "try-error")) {
+        message("Required Python modules not found. Setting up modules...")
+        setup_modules()
+        
+        # Try import again
+        llama_index <- if("llama-index-legacy" %in% reticulate::py_list_packages()$package) {
+            reticulate::import("llama_index.legacy")
+        } else {
+            reticulate::import("llama_index")
+        }
     }
-
   }
 
   # Check for service context
@@ -357,51 +368,6 @@ content_cleanup <- function(content)
 
   # Get number of documents
   n_documents <- length(content)
-
-  # Initialize data frame
-  content_df <- matrix(
-    data = NA, nrow = n_documents, ncol = 3,
-    dimnames = list(
-      NULL, c("document", "text", "score")
-    )
-  )
-
-  # Loop over content
-  for(i in seq_len(n_documents)){
-
-    # Populate matrix
-    content_df[i,] <- c(
-      content[[i]]$id_, content[[i]]$text, content[[i]]$score
-    )
-
-  }
-
-  # Make it a real data frame
-  content_df <- as.data.frame(content_df)
-
-  # Set proper modes
-  content_df$score <- as.numeric(content_df$score)
-
-  # Return data frame
-  return(content_df)
-
-}
-
-#' @noRd
-# Get document embedding ----
-# Updated 28.01.2024
-get_embedding <- function(index, output)
-{
-
-  # Loop across documents
-  embedding <- do.call(cbind, lapply(output$content$document, index$vector_store$get))
-
-### AT: Content and n_documents are not defined within the function
-### temp fix for CRAN checks, August 20 2024
-  # content
-  content <- output$content
-  # n_documents
-  n_documents <- nrow(content)
 
   # Initialize data frame
   content_df <- matrix(

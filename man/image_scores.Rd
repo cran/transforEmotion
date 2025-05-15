@@ -2,25 +2,74 @@
 % Please edit documentation in R/image_scores.R
 \name{image_scores}
 \alias{image_scores}
-\title{Calculate image scores based on OpenAI CLIP model}
+\title{Calculate image scores using a Hugging Face CLIP model}
 \usage{
-image_scores(image, classes, face_selection = "largest")
+image_scores(
+  image,
+  classes,
+  face_selection = "largest",
+  model = "oai-base",
+  local_model_path = NULL
+)
 }
 \arguments{
 \item{image}{The path to the image file or URL of the image.}
 
 \item{classes}{A character vector of classes to classify the image into.}
 
-\item{face_selection}{The method to select the face in the image. Can be "largest" or "left" or "right". Default is "largest" and will select the largest face in the image. "left" and "right" will select the face on the far left or the far right side of the image. Face_selection method is irrelevant if there is only one face in the image.}
+\item{face_selection}{The method to select the face in the image. Can be "largest"
+or "left" or "right". Default is "largest" and will select the largest face
+in the image. "left" and "right" will select the face on the far left or the
+far right side of the image. Face_selection method is irrelevant if there is
+only one face in the image.}
+
+\item{model}{A string specifying the CLIP model to use. Options are:
+\itemize{
+  \item \code{"oai-base"}: "openai/clip-vit-base-patch32" (default)
+  \item \code{"oai-large"}: "openai/clip-vit-large-patch14"
+  \item \code{"eva-8B"}: "BAAI/EVA-CLIP-8B-448" (quantized version for reduced memory usage)
+  \item \code{"jina-v2"}: "jinaai/jina-clip-v2"
+  \item Any valid HuggingFace model ID
+}
+Note: Using custom HuggingFace model IDs beyond the recommended models is done at your own risk.
+Large models may cause memory issues or crashes, especially on systems with limited resources.
+The package has been optimized and tested with the recommended models listed above.}
+
+\item{local_model_path}{Optional. Path to a local directory containing a pre-downloaded 
+HuggingFace model. If provided, the model will be loaded from this directory instead
+of being downloaded from HuggingFace. This is useful for offline usage or for using
+custom fine-tuned models. 
+
+On Linux/Mac, look in ~/.cache/huggingface/hub/ folder for downloaded models. 
+Navigate to the snapshots folder for the relevant model and point to the directory 
+which contains the config.json file. For example: 
+"/home/username/.cache/huggingface/hub/models--cross-encoder--nli-distilroberta-base/snapshots/b5b020e8117e1ddc6a0c7ed0fd22c0e679edf0fa/"
+
+On Windows, the base path is C:\\Users\\USERNAME\\.cache\\huggingface\\transformers\\
+
+Warning: Using very large models from local paths may cause memory issues or crashes 
+depending on your system's resources.}
 }
 \value{
 A data frame containing the scores for each class.
 }
 \description{
-This function takes an image file and a vector of classes as input and calculates the scores for each class using the OpenAI CLIP model.
-Primary use of the function is to calculate FER scores - Facial Expession Detectection of emotions based on detected facial expression in images. In case there are more than one face in the image, the function will return the scores of the face selected using the face_selection parameter.
+This function takes an image file and a vector of classes as input and calculates
+the scores for each class using a specified Hugging Face CLIP model.
+Primary use of the function is to calculate FER scores - Facial Expression
+Detection of emotions based on detected facial expression in images. In case
+there are more than one face in the image, the function will return the scores
+of the face selected using the face_selection parameter.
 If there is no face in the image, the function will return NA for all classes.
-Function uses reticulate to call the Python functions in the image.py file. If you run this package/function for the first time it will take some time for the package to setup a functioning Python virtual enviroment in the background. This includes installing Python libraries for facial recognition and emotion detection in text, images and video. Please be patient.
+Function uses reticulate to call the Python functions in the image.py file.
+If you run this package/function for the first time it will take some time
+for the package to setup a functioning Python virtual environment in the
+background. This includes installing Python libraries for facial recognition
+and emotion detection in text, images and video. Please be patient.
+}
+\details{
+Data Privacy: All processing is done locally with the downloaded model,
+and your images are never sent to any remote server or third-party.
 }
 \author{
 Aleksandar Tomasevic <atomashevic@gmail.com>

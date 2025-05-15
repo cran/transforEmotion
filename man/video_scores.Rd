@@ -2,7 +2,7 @@
 % Please edit documentation in R/video_scores.R
 \name{video_scores}
 \alias{video_scores}
-\title{Run FER on YouTube video}
+\title{Run FER on a YouTube video using a Hugging Face CLIP model}
 \usage{
 video_scores(
   video,
@@ -16,7 +16,9 @@ video_scores(
   save_video = FALSE,
   save_frames = FALSE,
   save_dir = "temp/",
-  video_name = "temp"
+  video_name = "temp",
+  model = "oai-base",
+  local_model_path = NULL
 )
 }
 \arguments{
@@ -43,13 +45,47 @@ video_scores(
 \item{save_dir}{The directory to save the analyzed frames. Default is "temp/".}
 
 \item{video_name}{The name of the analyzed video. Default is "temp".}
+
+\item{model}{A string specifying the CLIP model to use. Options are:
+\itemize{
+  \item \code{"oai-base"}: "openai/clip-vit-base-patch32" (default)
+  \item \code{"oai-large"}: "openai/clip-vit-large-patch14"
+  \item \code{"eva-8B"}: "BAAI/EVA-CLIP-8B-448" (quantized version for reduced memory usage)
+  \item \code{"jina-v2"}: "jinaai/jina-clip-v2"
+  \item Any valid HuggingFace model ID
+}
+Note: Using custom HuggingFace model IDs beyond the recommended models is done at your own risk.
+Large models may cause memory issues or crashes, especially on systems with limited resources.
+The package has been optimized and tested with the recommended models listed above.
+Video processing is particularly memory-intensive, so use caution with large custom models.}
+
+\item{local_model_path}{Optional. Path to a local directory containing a pre-downloaded
+  HuggingFace model. If provided, the model will be loaded from this directory instead
+  of being downloaded from HuggingFace. This is useful for offline usage or for using
+  custom fine-tuned models.
+
+  On Linux/Mac, look in ~/.cache/huggingface/hub/ folder for downloaded models.
+  Navigate to the snapshots folder for the relevant model and point to the directory
+  which contains the config.json file. For example:
+  "/home/username/.cache/huggingface/hub/models--cross-encoder--nli-distilroberta-base/snapshots/b5b020e8117e1ddc6a0c7ed0fd22c0e679edf0fa/"
+
+  On Windows, the base path is C:\\Users\\USERNAME\\.cache\\huggingface\\transformers\\
+
+  Warning: Using very large models from local paths may cause memory issues or crashes
+  depending on your system's resources, especially when processing videos with many frames.}
 }
 \value{
 A result object containing the analyzed video scores.
 }
 \description{
-This function retrieves FER scores a specific number of frames extracted from YouTube video. It uses Python libraries for facial recognition and emotion detection in text, images, and videos.
+This function retrieves facial expression recognition (FER) scores from a specific number of frames extracted from a YouTube video using a specified Hugging Face CLIP model. It utilizes Python libraries for facial recognition and emotion detection in text, images, and video.
 }
+\section{Data Privacy}{
+
+  All processing is done locally with the downloaded model,
+  and your video frames are never sent to any remote server or third-party.
+}
+
 \author{
 Aleksandar Tomasevic <atomashevic@gmail.com>
 }
