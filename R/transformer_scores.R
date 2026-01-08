@@ -24,20 +24,20 @@
 #' zero-shot classification model trained on the
 #' \href{https://nlp.stanford.edu/projects/snli/}{Stanford Natural Language Inference}
 #' (SNLI) corpus and
-#' \href{https://huggingface.co/datasets/multi_nli}{MultiNLI} datasets}
+#' \href{https://huggingface.co/datasets/nyu-mll/multi_nli}{MultiNLI} datasets}
 #'
 #' \item{\code{"cross-encoder-distilroberta"}}{Uses \href{https://huggingface.co/cross-encoder/nli-distilroberta-base}{Cross-Encoder's Natural Language Interface DistilRoBERTa Base}
 #' zero-shot classification model trained on the
 #' \href{https://nlp.stanford.edu/projects/snli/}{Stanford Natural Language Inference}
 #' (SNLI) corpus and
-#' \href{https://huggingface.co/datasets/multi_nli}{MultiNLI} datasets. The DistilRoBERTa
+#' \href{https://huggingface.co/datasets/nyu-mll/multi_nli}{MultiNLI} datasets. The DistilRoBERTa
 #' is intended to be a smaller, more lightweight version of \code{"cross-encoder-roberta"},
 #' that sacrifices some accuracy for much faster speed (see
 #' \href{https://www.sbert.net/docs/cross_encoder/pretrained_models.html#nli}{https://www.sbert.net/docs/cross_encoder/pretrained_models.html#nli})}
 #'
 #' \item{\code{"facebook-bart"}}{Uses \href{https://huggingface.co/facebook/bart-large-mnli}{Facebook's BART Large}
 #' zero-shot classification model trained on the
-#' \href{https://huggingface.co/datasets/multi_nli}{Multi-Genre Natural Language
+#' \href{https://huggingface.co/datasets/nyu-mll/multi_nli}{Multi-Genre Natural Language
 #' Inference} (MultiNLI) dataset}
 #'
 #' }
@@ -178,6 +178,9 @@ transformer_scores <- function(
 )
 {
 
+  # Ensure reticulate uses the transforEmotion conda environment
+  ensure_te_py_env()
+
   # Check that input of 'text' argument is in the
   # appropriate format for the analysis
   non_text_warning(text) # see utils-transforEmotion.R for function
@@ -193,6 +196,17 @@ transformer_scores <- function(
   # Check for transformer
   if(missing(transformer)){
     transformer <- "cross-encoder-distilroberta"
+  }
+
+  # Disallow non-zero-shot LLMs (Ollama models) here; guide to rag()
+  blocked_llms <- c("gemma3-270m","gemma3-1b","gemma3-4b","ministral-3b","ministral-8b")
+  if (tolower(transformer) %in% blocked_llms) {
+    stop(
+      paste0(
+        "Transformer '", transformer, "' is a general LLM and not compatible with the 'zero-shot-classification' pipeline.\n",
+        "Use rag(..., task=\"emotion\", output=\"table\") for LLM-based structured extraction, or provide a HuggingFace model ID that supports zero-shot classification (MNLI)."
+      ), call. = FALSE
+    )
   }
 
   # Check for multiple transformers
@@ -225,10 +239,33 @@ logging.getLogger('transformers').setLevel(logging.ERROR)  # Suppress transforme
 logging.getLogger('huggingface_hub').setLevel(logging.ERROR)  # Suppress huggingface_hub logs
 ")
 
-  # Check for classifiers in environment
-  if(exists(transformer, envir = as.environment(envir))){
-    classifier <- get(transformer, envir = as.environment(envir))
-  }else{
+  # Check for a cached classifier in the environment; only reuse if Python is
+  # already initialized and the object pointer is valid for this session.
+  classifier <- NULL
+  if (exists(transformer, envir = as.environment(envir))) {
+    py_inited <- FALSE
+    try({ py_inited <- reticulate::py_available(initialize = FALSE) }, silent = TRUE)
+    if (isTRUE(py_inited)) {
+      cand <- get(transformer, envir = as.environment(envir))
+      valid <- FALSE
+      suppressWarnings(try({
+        valid <- reticulate::is_py_object(cand) && !reticulate::py_is_null_xptr(cand)
+      }, silent = TRUE))
+      if (isTRUE(valid)) {
+        classifier <- cand
+        # Ensure the transformers module is bound as well for consistency
+        transformers <- try(reticulate::import("transformers"), silent = TRUE)
+      } else {
+        # Drop invalid cached object; will rebuild below
+        try(rm(list = transformer, envir = as.environment(envir)), silent = TRUE)
+      }
+    } else {
+      # Python not initialized yet; cached pointer will be invalid in new session
+      try(rm(list = transformer, envir = as.environment(envir)), silent = TRUE)
+    }
+  }
+
+  if (is.null(classifier)){
 
     # Try to import required modules
     modules_import <- try({
@@ -263,16 +300,45 @@ logging.getLogger('huggingface_hub').setLevel(logging.ERROR)  # Suppress hugging
       "cross-encoder-roberta", "cross-encoder-distilroberta", "facebook-bart"
     )){
 
-      # Load pipeline
-      classifier <- transformers$pipeline(
-        "zero-shot-classification", device = device,
-        model = switch(
-          transformer,
-          "cross-encoder-roberta" = "cross-encoder/nli-roberta-base",
-          "cross-encoder-distilroberta" = "cross-encoder/nli-distilroberta-base",
-          "facebook-bart" = "facebook/bart-large-mnli"
-        )
-      )
+      # Load pipeline (ensure no HF token is sent for public models)
+      pipeline_try <- try({
+        without_hf_token({
+          transformers$pipeline(
+            "zero-shot-classification", device = device,
+            model = switch(
+              transformer,
+              "cross-encoder-roberta" = "cross-encoder/nli-roberta-base",
+              "cross-encoder-distilroberta" = "cross-encoder/nli-distilroberta-base",
+              "facebook-bart" = "facebook/bart-large-mnli"
+            )
+          )
+        })
+      }, silent = TRUE)
+
+      if (is(pipeline_try, "try-error")) {
+        # Workaround: Some sentence-transformers cross-encoder repos occasionally trigger
+        # a Rust/serde error ("untagged enum ModelWrapper") in tokenizers/safetensors
+        # on certain stacks. Fall back to a stable MNLI model.
+        if (isTRUE(grepl("ModelWrapper|untagged enum ModelWrapper", pipeline_try))) {
+          message("Falling back to 'facebook/bart-large-mnli' due to tokenizer/model compatibility error...")
+          fallback_try <- try({
+            without_hf_token({
+              transformers$pipeline(
+                "zero-shot-classification",
+                model = "facebook/bart-large-mnli",
+                device = if (identical(device, "cuda")) device else "cpu"
+              )
+            })
+          }, silent = TRUE)
+          if (is(fallback_try, "try-error")) stop(fallback_try, call. = FALSE)
+          classifier <- fallback_try
+          transformer <- "facebook-bart"
+        } else {
+          stop(pipeline_try, call. = FALSE)
+        }
+      } else {
+        classifier <- pipeline_try
+      }
 
     }else{
 
@@ -285,18 +351,22 @@ logging.getLogger('huggingface_hub').setLevel(logging.ERROR)  # Suppress hugging
             stop("The specified local_model_path directory does not exist: ", local_model_path)
           }
           message("Using local model from: ", local_model_path)
-          classifier <- transformers$pipeline(
-            "zero-shot-classification",
-            model = local_model_path,
-            device = device,
-            local_files_only = TRUE
-          )
+          classifier <- without_hf_token({
+            transformers$pipeline(
+              "zero-shot-classification",
+              model = local_model_path,
+              device = device,
+              local_files_only = TRUE
+            )
+          })
         } else {
-          classifier <- transformers$pipeline(
-            "zero-shot-classification",
-            model = transformer,
-            device = device
-          )
+          classifier <- without_hf_token({
+            transformers$pipeline(
+              "zero-shot-classification",
+              model = transformer,
+              device = device
+            )
+          })
         }
       }, silent = TRUE)
 
@@ -320,18 +390,22 @@ logging.getLogger('huggingface_hub').setLevel(logging.ERROR)  # Suppress hugging
           # Try again without device_map or fallback to CPU if the first attempt fails
           pipeline_catch <- try({
             if (!is.null(local_model_path)) {
-              classifier <- transformers$pipeline(
-                "zero-shot-classification",
-                model = local_model_path,
-                local_files_only = TRUE,
-                device = "cpu" # Fallback to CPU
-              )
+              classifier <- without_hf_token({
+                transformers$pipeline(
+                  "zero-shot-classification",
+                  model = local_model_path,
+                  local_files_only = TRUE,
+                  device = "cpu" # Fallback to CPU
+                )
+              })
             } else {
-              classifier <- transformers$pipeline(
-                "zero-shot-classification",
-                model = transformer,
-                device = "cpu" # Fallback to CPU
-              )
+              classifier <- without_hf_token({
+                transformers$pipeline(
+                  "zero-shot-classification",
+                  model = transformer,
+                  device = "cpu" # Fallback to CPU
+                )
+              })
             }
           }, silent = TRUE);
 
