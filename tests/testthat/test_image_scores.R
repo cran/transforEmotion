@@ -82,6 +82,7 @@ test_that("image_scores works with local_model_path", {
   image_path <- system.file("extdata", "boris-1.png", package = "transforEmotion")
   labels <- c("anger", "disgust", "fear", "happiness", "sadness", "surprise", "neutral")
   local_model_path <- "/home/aleksandar/.cache/huggingface/hub/models--openai--clip-vit-base-patch32/snapshots/3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268/" # Replace with actual path when testing
+  skip_if_not(dir.exists(local_model_path), "Local model directory not found")
 
   result <- image_scores(
     image = image_path,
@@ -93,4 +94,37 @@ test_that("image_scores works with local_model_path", {
   expect_s3_class(result, "data.frame")
   expect_equal(ncol(result), length(labels))
   expect_equal(names(result), labels)
+})
+
+test_that("clip-custom models get their own adapters", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("reticulate")
+  skip_if_not(reticulate::py_module_available("transformers"))
+
+  # Adapters load weights lazily, so this needs no model download
+  reticulate::source_python(system.file("python", "image.py", package = "transforEmotion"))
+  adapter_class <- function(model_id, architecture) {
+    adapter <- reticulate::py$get_vision_adapter(model_id, NULL, architecture)
+    reticulate::py_to_r(adapter$`__class__`$`__name__`)
+  }
+
+  expect_equal(adapter_class("jinaai/jina-clip-v2", "clip-custom"), "JinaCLIPAdapter")
+  expect_equal(adapter_class("BAAI/EVA-CLIP-8B-448", "clip-custom"), "EVACLIPAdapter")
+  expect_equal(adapter_class("openai/clip-vit-base-patch32", "clip"), "CLIPAdapter")
+})
+
+test_that("checkpoints holding only a fine-tuned CLIP vision encoder are detected", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("reticulate")
+  skip_if_not(reticulate::py_module_available("transformers"))
+
+  # Reads only config.json from the Hub
+  reticulate::source_python(system.file("python", "image.py", package = "transforEmotion"))
+  base <- function(model_id) reticulate::py$vision_only_base(model_id)
+
+  expect_equal(base("tanganke/clip-vit-base-patch32_fer2013"), "openai/clip-vit-base-patch32")
+  expect_null(base("openai/clip-vit-base-patch32"))
+  expect_true(all(c("oai-base-fer", "oai-large-fer") %in% list_vision_models()$name))
 })

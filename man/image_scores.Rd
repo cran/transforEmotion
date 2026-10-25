@@ -9,7 +9,8 @@ image_scores(
   classes,
   face_selection = "largest",
   model = "oai-base",
-  local_model_path = NULL
+  local_model_path = NULL,
+  face_detector = c("yunet", "haar")
 )
 }
 \arguments{
@@ -17,17 +18,25 @@ image_scores(
 
 \item{classes}{A character vector of classes to classify the image into.}
 
-\item{face_selection}{The method to select the face in the image. Can be "largest",
-"left", "right", or "none". Default is "largest" and will select the largest face
-in the image. "left" and "right" will select the face on the far left or the
-far right side of the image. "none" will use the whole image without cropping.
-Face_selection method is irrelevant if there is
-only one face in the image.}
+\item{face_selection}{The face(s) to score. Can be "largest", "left", "right",
+"none", "all", face numbers, or a data frame of faces. Default is "largest"
+and will select the largest face in the image. "left" and "right" will select
+the face on the far left or the far right side of the image. "none" will use
+the whole image without cropping. These four return one row, as before.
+"all" scores every face, face numbers (such as \code{c(1, 3)}) score those
+faces, numbered from left to right as \code{\link{detect_faces}} numbers
+them, and a data frame from \code{\link{detect_faces}} or
+\code{\link{select_faces}} scores its faces in this image without detecting
+them again; these return one row per face (see \code{\link{face_scores}}).}
 
 \item{model}{A string specifying the vision model to use. Options include:
 \itemize{
-  \item Built-in models: "oai-base" (default), "oai-large", "eva-8B", "jina-v2"
-  \item Any valid HuggingFace model ID
+  \item Built-in models: "oai-base" (default), "oai-large", "eva-8B", "jina-v2",
+    "oai-base-fer" and "oai-large-fer" (OpenAI CLIP with the vision encoder
+    fine-tuned on the FER2013 facial-expression dataset)
+  \item Any valid HuggingFace model ID, including checkpoints that hold only
+    a fine-tuned CLIP vision encoder; their text encoder and processor come
+    from the base CLIP model named in the checkpoint's config
   \item Custom registered models (see \code{\link{register_vision_model}})
 }
 Use \code{\link{list_vision_models}} to see all available models.
@@ -47,6 +56,10 @@ On Windows, the base path is C:\\Users\\USERNAME\\.cache\\huggingface\\transform
 
 Warning: Using very large models from local paths may cause memory issues or crashes 
 depending on your system's resources.}
+
+\item{face_detector}{\code{"yunet"} (default), OpenCV's YuNet face detector,
+or \code{"haar"}, the Haar cascade used before version 0.1.8. Use
+\code{"haar"} to reproduce scores from earlier versions.}
 }
 \value{
 A data frame containing the scores for each class.

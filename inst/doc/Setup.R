@@ -7,13 +7,16 @@ knitr::opts_chunk$set(
 ## ----load, eval = TRUE, echo = FALSE, comment = NA, warning = FALSE, message = FALSE----
 library(transforEmotion)
 
+## ----setup_modules, eval = FALSE, echo = TRUE---------------------------------
+# setup_modules()
+
 ## ----transformers_scores, eval = FALSE, echo = TRUE, comment = NA, warning = FALSE, message = FALSE----
 # 
 # library(transforEmotion)
 # 
-# # Setup Python
+# # Setup Python (optional)
 # 
-# setup_miniconda()
+# setup_modules()
 # 
 # # Load data
 # 
@@ -56,7 +59,7 @@ library(transforEmotion)
 
 ## ----image_scores, eval = FALSE, echo = TRUE, comment = NA, warning = FALSE, message = FALSE----
 # 
-# image <- ""https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/402px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg"
+# image <- "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/402px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg"
 # 
 # emotions <- c("excitement", "happiness", "pride", "anger", "fear", "sadness", "neutral")
 # 
@@ -74,7 +77,8 @@ library(transforEmotion)
 
 ## ----image_scores_nas_output, eval = FALSE, echo = TRUE, comment = NA, warning = FALSE----
 # No face found in the image
-# data frame with 0 columns and 0 rows
+#   excitement happiness pride anger fear sadness neutral
+# 1         NA        NA    NA    NA   NA      NA      NA
 
 ## ----video_scores, eval = FALSE, echo = TRUE, comment = NA, warning = FALSE, message = FALSE----
 # 

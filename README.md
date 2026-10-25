@@ -1,68 +1,86 @@
-### CRAN 0.1.6 | GitHub 0.1.7
+### CRAN 0.1.7 | GitHub 0.1.8
 
-[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![R-CMD-check](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml/badge.svg)](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml) [![Downloads Total](https://cranlogs.r-pkg.org/badges/grand-total/transforEmotion?color=brightgreen)](https://cran.r-project.org/package=transforEmotion)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![R-CMD-check](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml/badge.svg)](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml) [![Downloads Total](https://cranlogs.r-pkg.org/badges/grand-total/transforEmotion?color=brightgreen)](https://cran.r-project.org/package=transforEmotion) [![DOI](https://img.shields.io/badge/DOI-10.5117%2FCCR2026.2.2.TOMA-blue)](https://doi.org/10.5117/CCR2026.2.2.TOMA) [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa)](https://github.com/sponsors/atomashevic)
 
 <!--[![Downloads per month](http://cranlogs.r-pkg.org/badges/transforEmotion)](https://cran.r-project.org/package=transforEmotion) [![DOI](https://zenodo.org/badge/464199787.svg)](https://zenodo.org/doi/10.5281/zenodo.10471354) -->
 
 
-## transforEmotion: Sentiment Analysis for Text, Image and Video Using Transformer Models
+## transforEmotion: Transformer Emotion Analysis for Text, Image, Video, and Speech
 
 
 <div style="text-align: center;">
   <img src="man/figures/logo.png" alt="Logo" width="35%" style="display: block; margin: 0 auto;">
 </div>
 
-With `transforEmotion` you can use cutting-edge transformer models for zero-shot emotion classification of text, image, and video in R — without the need for a GPU, subscriptions, or paid services, and without any manual Python setup. All data is processed locally on your machine, and nothing is sent to any external server or third-party service. This ensures full privacy for your data.
+With `transforEmotion` you can use transformer models for zero-shot emotion classification of text, images, video, and speech in R, and find faces and code them by hand — without the need for a GPU, subscriptions, or paid services, and without any manual Python setup. All data is processed locally on your machine, and nothing is sent to any external server or third-party service. This ensures full privacy for your data.
 
-- [How to install the package?](#how-to-install)
+- [Installation and first run](#installation-and-first-run)
+- [Google Colab](#google-colab)
 - [How to run sentiment analysis on text?](#text-example)
 - [How to run facial expression recognition on images?](#image-example)
 - [How to run facial expression recognition on videos?](#video-example)
 
-<!-- Implements sentiment analysis using [huggingface](https://huggingface.co/) transformer zero-shot classification model pipelines. The default pipeline for text is [Cross-Encoder's DistilRoBERTa](https://huggingface.co/cross-encoder/nli-distilroberta-base) trained on the [Stanford Natural Language Inference](https://huggingface.co/datasets/snli) (SNLI) and [Multi-Genre Natural Language Inference](https://huggingface.co/datasets/nyu-mll/multi_nli) (MultiNLI) datasets. Using similar models, zero-shot classification transformers have demonstrated superior performance relative to other natural language processing models (Yin, Hay, & Roth, [2019](https://arxiv.org/abs/1909.00161)). All other zero-shot classification model pipelines can be implemented using their model name from https://huggingface.co/models?pipeline_tag=zero-shot-classification. -->
+<!-- Implements sentiment analysis using [huggingface](https://huggingface.co/) transformer zero-shot classification model pipelines. The default pipeline for text is [Cross-Encoder's DistilRoBERTa](https://huggingface.co/cross-encoder/nli-distilroberta-base) trained on the [Stanford Natural Language Inference](https://huggingface.co/datasets/stanfordnlp/snli) (SNLI) and [Multi-Genre Natural Language Inference](https://huggingface.co/datasets/nyu-mll/multi_nli) (MultiNLI) datasets. Using similar models, zero-shot classification transformers have demonstrated superior performance relative to other natural language processing models (Yin, Hay, & Roth, [2019](https://arxiv.org/abs/1909.00161)). All other zero-shot classification model pipelines can be implemented using their model name from https://huggingface.co/models?pipeline_tag=zero-shot-classification. -->
 
-## How to Install
+## Installation and First Run
 
-You can find the latest stable version on [CRAN](https://cran.r-project.org/package=transforEmotion). Install it in R with:
+Install the release from CRAN, or the development version from GitHub:
 
 ```R
 install.packages("transforEmotion")
+
+# Development version
+install.packages("remotes")
+remotes::install_github("atomashevic/transforEmotion")
 ```
 
-If you want to use the latest development version, you can install it from GitHub using the `devtools` package.
+You do not need to install Python. The first function that uses Python sets it up:
+
+1. `reticulate` downloads [uv](https://docs.astral.sh/uv/), a fast Python package manager, if it is not installed.
+2. uv installs Python 3.12 and the Python packages: about 500 MB, or about 3 GB on a machine with an NVIDIA GPU (the CUDA build of PyTorch).
+3. The function downloads its model from Hugging Face, usually 100–600 MB.
+
+This takes 1–3 minutes and happens once. Later R sessions reuse the cached environment and models: Python starts in a few seconds and nothing is downloaded again. Each new model you use is downloaded the first time you use it.
+
+To do the setup before your first analysis, and download the default text, image and sentence-similarity models (about 1 GB):
 
 ```R
-if(!"devtools" %in% row.names(installed.packages())){
-  install.packages("devtools")
-}
-
-devtools::install_github("atomashevic/transforEmotion")
-```
-
-After installing the package, you can load it in R.
-
-```R
-# Load package
 library(transforEmotion)
-```
-
-After loading the package for the first time, the Python environment is provisioned automatically on first use via `uv`. You can optionally pre‑warm dependencies to speed up the first call:
-
-```R
-# Optional one-time environment warmup (uv-managed)
 setup_modules()
 ```
 
-If `uv` is not found, you’ll be prompted to install it. If that fails or you prefer manual install:
-- macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `brew install uv` on macOS)
-- Windows: `winget install --id=astral-sh.uv -e`
-After installing, restart R so your PATH is updated. If you cannot install `uv`, you can continue; `reticulate` will create a default virtual environment on first use (setup may be slower).
+Optional features add their Python packages the first time they are used: `rag()` adds LlamaIndex and downloads a language model (TinyLLAMA, about 2 GB), `video_scores()` adds `pytubefix` for YouTube URLs, `speech_scores()` adds `av` (PyAV) to read audio, and the FindingEmo functions add `findingemo-light`. To prepare them in advance, run `setup_modules(extras = c("rag", "youtube", "audio", "findingemo"))`.
+
+Then run an analysis:
+
+```R
+library(transforEmotion)
+transformer_scores(
+  text = "I am so happy to see you today!",
+  classes = c("joy", "anger", "fear")
+)
+#> $`I am so happy to see you today!`
+#>         joy       anger        fear
+#> 0.992855728 0.003367609 0.003776714
+```
+
+The scores are the model's probabilities that the text belongs to each class.
+
+The Python environment and the models are stored in cache folders in your home directory (uv's cache and `~/.cache/huggingface`). To keep them elsewhere, for example on a cluster with a small home quota, or to work without internet access, see [Offline Use](#offline-use-hpc-clusters-and-containers).
+
+If the setup fails, the error shows uv's output. Fix the cause (usually the network connection) and try again in a new R session: Python cannot be set up again once it has started in a session.
 
 > [!WARNING]
 > If you use the [radian](https://github.com/randy3k/radian) console (VSCode/terminal), its Python session may block first-time environment provisioning. Use the default R console for initial setup, then switch back if you prefer.
 
-> [!INFO]
+> [!NOTE]
 > If you are using RStudio, please make sure that you are using the latest version of both R and RStudio.
+
+## Google Colab
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/atomashevic/transforEmotion/blob/main/notebooks/transforEmotion_colab.ipynb)
+
+The notebook installs the package in a Colab R runtime and runs the text, image, video and RAG examples. It works on the free CPU runtime; on a GPU runtime (Runtime > Change runtime type > T4 GPU) the package installs the CUDA build of PyTorch and uses the GPU automatically. Colab deletes the Python environment and models when the runtime is deleted, so a new runtime repeats the first-run setup.
 
 ## Text Example
 
@@ -141,7 +159,7 @@ text <- "With `transforEmotion` you can use cutting-edge transformer models for 
         using [huggingface](https://huggingface.co/) transformer zero-shot classification model pipelines.
         The default pipeline for text is
         [Cross-Encoder's DistilRoBERTa](https://huggingface.co/cross-encoder/nli-distilroberta-base)
-        trained on the [Stanford Natural Language Inference](https://huggingface.co/datasets/snli) (SNLI) and
+        trained on the [Stanford Natural Language Inference](https://huggingface.co/datasets/stanfordnlp/snli) (SNLI) and
         [Multi-Genre Natural Language Inference](https://huggingface.co/datasets/nyu-mll/multi_nli) (MultiNLI) datasets.
         Using similar models, zero-shot classification transformers have demonstrated
         superior performance relative to other natural language processing models
@@ -179,6 +197,7 @@ Supported local LLMs include TinyLLAMA, Gemma3‑1B/4B, Qwen3‑1.7B, and Minist
 > [!TIP] Hugging Face token handling
 > - No long-term storage: The package never writes tokens to disk.
 > - Gemma only: It first tries to download without a token; on 401/forbidden, it prompts you to paste a token and uses it once for that download, then discards it.
+> - Scripts and notebooks (including Google Colab) cannot show the prompt: set the token first with `Sys.setenv(HF_TOKEN = "hf_...")`.
 > - Public models: Downloads always ignore tokens to avoid unnecessary 401s from stale credentials.
 > - Create a token at https://huggingface.co/settings/tokens. For Gemma 3, accept the model license on the model page first.
 
@@ -240,9 +259,64 @@ image_scores(image, emotions, model = "oai-base")
 
 You can define up to 10 emotions. The output is a data frame with 1 row and columns corresponding to emotions. The values are FER scores for each emotion.
 
-If there is no face detected in the image, the output will be a 0x0 data frame.
+If there is no face detected in the image, the output is one row of `NA` scores.
 
-If there are multiple faces detected in the image, by default the function will return the FER scores for the largest (focal) face. Alternatively, you can select the face on the left or the right side of the image by specifying the `face_selection` argument.
+If there are multiple faces detected in the image, by default the function will return the FER scores for the largest (focal) face. Alternatively, you can select the face on the left or the right side of the image by specifying the `face_selection` argument, or score every face with `face_selection = "all"`.
+
+Faces are found with OpenCV's YuNet detector. To reproduce scores from versions before 0.1.8, which used a Haar cascade, set `face_detector = "haar"`.
+
+## Inspecting and Choosing Faces
+
+`detect_faces()` lists every face it finds in images or in frames sampled from a video, with its box, confidence, a track id that follows it from frame to frame, and a person id shared by all faces of the same person (OpenCV's SFace face recognizer; its 10 MB model is downloaded on first use). Pick the faces to analyse with `select_faces()` or ordinary subsetting, and score them with `face_scores()`:
+
+```r
+faces <- detect_faces("interview.mp4", nframes = 50)
+table(faces$person_id)
+
+# Draw the boxes, track and person on a few frames
+draw_faces(faces, max_images = 6)
+
+# Every face of one person, across the whole video
+scores <- face_scores(select_faces(faces, persons = "p1"), classes = emotions)
+```
+
+To look at the faces in your web browser instead, use `view_faces(faces)`: R opens a page that shows every image or sampled frame with its boxes, coloured by person, and a list of the people found. With `select = TRUE`, you click faces, video tracks or people and then Send to R, and `view_faces()` returns those faces:
+
+```r
+chosen <- view_faces(faces, select = TRUE)
+scores <- face_scores(chosen, classes = emotions)
+```
+
+The page is served by R on your own computer only and makes no outside requests. When R runs on a remote computer, forward the port over SSH (`view_faces()` prints the command), or use `live = FALSE` to write the page as a folder to copy, and read its exported choice with `read_face_selection()`.
+
+In a Jupyter notebook, such as Google Colab, `view_faces()` shows the page below the cell instead. Click the faces, then **Copy R code**, and run the copied line in a new cell:
+
+```r
+view_faces(faces, select = TRUE)
+# then, in a new cell, the copied line, for example
+chosen <- read_face_selection("te-selection:eyJzY2hlbWEiOi...", faces)
+```
+
+To code faces by hand, for example to check the model against people, `annotation_task(faces, classes = emotions, coders = c("C01", "C02"), dir = "round-1")` sets up a coding task, `annotate_faces()` opens the coding page and saves each answer as it is given, and `read_annotations()`, `annotation_agreement()` and `consensus_labels()` read the answers, measure agreement between coders and give one label per face for `evaluate_emotions()`. In a Jupyter notebook such as Google Colab, `annotate_faces()` shows the coding page below the cell, and **Copy R code** gives a line, `answers <- read_annotations(task, "te-annotations:...")`, to run in a new cell. The vignette "Checking faces and coding them by hand" walks through it.
+
+The same tasks can hold video clips, images or texts instead of single faces, for example to review the clips a model got wrong. Each item shows sampled frames with the face boxes, the clip with its sound and its text; the reference label, the model's answer and its scores appear after the coder's own answer, followed by a question on what explains the result:
+
+```r
+emotions <- c("angry", "fearful", "happy", "sad")
+items <- data.frame(id = errors$clip, media = errors$path, text = errors$description,
+                    label = errors$label, prediction = errors$predicted, errors[, emotions])
+review <- annotation_task(items = items, classes = emotions, coders = c("C01", "C02"), dir = "error-review")
+annotate_faces(review)
+
+answers <- read_annotations(review)
+table(answers$value[answers$question == "why"])
+consensus <- consensus_labels(answers)
+evaluate_emotions(consensus, truth_col = "reference", pred_col = "label")  # coders vs the dataset's label
+```
+
+To try this, the package comes with a picture of two people (`system.file("extdata", "two-people.jpg", package = "transforEmotion")`) and a short clip in which both leave and one of them comes back alone (`"two-people.mp4"`).
+
+The same table can be passed as `face_selection` to `image_scores()`, `image_scores_dir()` and `video_scores()`. Grouping faces by person processes biometric data; use `identify = FALSE` to turn it off.
 
 ## Video Example
 
@@ -273,9 +347,58 @@ The `image_scores` and `video_scores` functions support different models. The av
 - `oai-base`: "openai/clip-vit-base-patch32" - A base model that is faster but less accurate. Requires ~2GB of RAM.
 - `oai-large`: "openai/clip-vit-large-patch14" - A larger model that is more accurate but slower. Requires ~4GB of RAM.
 - `eva-8B`: "BAAI/EVA-CLIP-8B-448" - A very large model that has been quantized to 4-bit precision for reduced memory usage (requires ~8GB of RAM instead of the original ~32GB).
-- `jina-v2`: "jinaai/jina-clip-v2" - Another large model with high accuracy but requires more resources (~6GB of RAM).
+- `jina-v2`: "jinaai/jina-clip-v2" - Another large model with high accuracy but requires more resources (~6GB of RAM). Its text encoder is multilingual, so labels can be written in languages other than English.
+- `oai-base-fer`: "tanganke/clip-vit-base-patch32_fer2013" - `oai-base` with its vision encoder fine-tuned on the FER2013 facial-expression dataset. Same resources as `oai-base`.
+- `oai-large-fer`: "tanganke/clip-vit-large-patch14_fer2013" - `oai-large` with its vision encoder fine-tuned on FER2013. Same resources as `oai-large`.
+
+#### Fine-tuned vision encoders
+
+`oai-base-fer` and `oai-large-fer` are checkpoints that hold only a fine-tuned CLIP vision encoder. transforEmotion loads the text encoder and processor from the base CLIP model named in the checkpoint's `config.json` and replaces its vision encoder, so the labels still work zero-shot. Any Hugging Face checkpoint of this kind (model type `clip_vision_model`, saved with `save_pretrained()` from a CLIP model) can be used the same way, by its ID or through `register_vision_model(architecture = "clip")`.
+
+The fine-tuned models recognise facial expressions better than the originals, and label wording matters too. On a sample of the MAFW video dataset (100 clips per basic emotion, of which 682 had a detectable face; 10 frames per clip, `face_selection = "largest"`, clip prediction = highest mean score), accuracy for seven basic emotions was:
+
+| Model | `"angry"`, `"happy"`, ... | `"a photo of an angry face"`, ... |
+|---|---|---|
+| `oai-base` | 0.27 | 0.33 |
+| `oai-large` | 0.33 | 0.34 |
+| `oai-base-fer` | 0.41 | 0.40 |
+| `oai-large-fer` | 0.44 | 0.48 |
+
+Chance is 0.14. Validate the model and label wording on a labelled sample from your own data before a full analysis (see `evaluate_emotions()`).
+
+```R
+emotions <- c("a photo of an angry face", "a photo of a disgusted face", "a photo of a fearful face",
+              "a photo of a happy face", "a photo of a neutral face", "a photo of a sad face",
+              "a photo of a surprised face")
+image <- system.file("extdata", "boris-1.png", package = "transforEmotion")
+image_scores(image, classes = emotions, model = "oai-large-fer")
+```
 
 > **Note:** The memory requirements listed above are approximate and represent the minimum RAM needed. For optimal performance, we recommend having at least 16GB of system RAM when using any of these models. If you're processing videos or multiple images in batch, more RAM might be needed. When using GPU acceleration, similar VRAM requirements apply. We recommend using 'oai-base' or 'oai-large' for most applications as they provide a good balance between accuracy and resource usage.
+
+## Speech Example
+
+`speech_scores()` splits the audio track of an audio file, a video file or a YouTube video into segments and scores each segment against the classes with a CLAP audio-text model (`laion/larger_clap_music_and_speech`), zero-shot, as `image_scores()` does with CLIP. The segments are chosen as `video_scores()` chooses frames: `nsegments`, `segment_length` (at most 10 seconds), `start`, `end` and `uniform`.
+
+```R
+emotions <- c("a person speaking angrily", "a person speaking happily",
+              "a person speaking sadly", "a person speaking in a neutral voice")
+
+# Consecutive 5-second segments from 10 s to 120 s
+result <- speech_scores("interview.mp4", classes = emotions,
+                        nsegments = 20, segment_length = 5, start = 10, end = 120)
+```
+
+The result has one row per segment, with `segment`, `start` and `end` (seconds in the file) and one column of scores per class.
+
+LAION CLAP is a general audio model and separates speech emotions poorly. On RAVDESS (1440 acted English clips from 24 actors, one segment per clip, clip prediction = highest score), unweighted average recall was:
+
+| Classes | `"angry"`, `"happy"`, ... | `"a person speaking angrily"`, ... |
+|---|---|---|
+| 8 emotions (chance 0.125) | 0.13 | 0.17 |
+| angry, happy, neutral, sad (chance 0.25) | 0.28 | 0.33 |
+
+Most clips were predicted as neutral. Use the scores for exploration only, and validate them on a labelled sample from your own data (see `evaluate_emotions()`).
 
 ## Vision Model Registry (experimental)
 
@@ -299,14 +422,52 @@ register_vision_model(
 
 ## GPU Support
 
-The package uses uv-managed Python environments and auto-detects GPU on supported systems. For successful GPU use, ensure:
+When an NVIDIA GPU is detected on Linux or Windows, the CUDA 12.6 build of PyTorch is installed; otherwise the CPU-only build is used (on macOS, PyTorch supports Apple Silicon GPUs directly). GPU use needs only an NVIDIA driver recent enough for CUDA 12 (R525 or newer); the CUDA libraries come with PyTorch, so no CUDA Toolkit or compiler is required.
 
-1. An NVIDIA GPU (GTX 1060 or newer)
-2. CUDA Toolkit 11.7+ installed
-3. Updated NVIDIA drivers
-4. GCC/G++ version 9 or newer (Linux only)
+To override the detection, set an environment variable in a new R session before loading the package (or add it to `.Renviron`):
 
-If your system does not meet these requirements or you prefer not to use GPU, everything works in CPU mode (just slower). You can optionally run `setup_modules()` once to pre-warm dependencies; otherwise, the environment is provisioned automatically on first use.
+```R
+Sys.setenv(TE_FORCE_CPU = "1")             # always use the CPU build
+Sys.setenv(TRANSFOREMOTION_USE_GPU = "1")  # always use the CUDA build
+library(transforEmotion)
+```
+
+Everything works in CPU mode, only slower.
+
+## Offline Use: HPC Clusters and Containers
+
+### HPC clusters
+
+Compute nodes often have no internet access, and home folders often have small quotas. Keep the Python environment, Python itself and the models in one folder on shared project storage, prepare it once on a login node, and use it offline in jobs:
+
+```R
+# Once, on a login node (with internet access)
+library(transforEmotion)
+setup_cache("/project/mylab/transforEmotion-cache", gpu = TRUE)
+setup_modules(extras = "rag", models = "facebook/bart-large-mnli")
+
+# In each job script (no internet access needed)
+library(transforEmotion)
+setup_cache("/project/mylab/transforEmotion-cache", offline = TRUE, gpu = TRUE)
+scores <- transformer_scores(text, classes)
+```
+
+Login nodes usually have no GPU, so set `gpu` explicitly, to the same value in both places: `TRUE` if the compute nodes have NVIDIA GPUs, `FALSE` otherwise. Offline jobs can use the default models plus any passed to `setup_modules(models = )`. The cache folder must stay writable.
+
+### Docker and Apptainer
+
+`docker/Dockerfile` builds an image with the package, a fixed Python environment and the default models, which runs offline by default:
+
+```bash
+docker build -f docker/Dockerfile -t transforemotion .                        # CPU
+docker build -f docker/Dockerfile --build-arg EXTRAS=rag -t transforemotion:rag .
+docker build -f docker/Dockerfile --build-arg GPU=1 -t transforemotion:cuda .  # NVIDIA
+docker run --rm -it -v "$PWD":/work transforemotion
+```
+
+On clusters that run Apptainer (Singularity) instead of Docker, convert the image with `apptainer build transforemotion.sif docker-daemon://transforemotion:latest`. Apptainer images are read-only, which is why the image uses a fixed environment rather than uv's cache.
+
+To build your own fixed environment, for example in a read-only software folder, install the output of `python_requirements()` into a Python 3.12 virtual environment and set `TRANSFOREMOTION_PYTHON` to its Python executable; transforEmotion then uses it without installing anything.
 
 ## Datasets: FindingEmo-Light
 
@@ -328,6 +489,29 @@ The example images included in this package (`inst/extdata/`) have different lic
 - `trump1.jpg`, `trump2.jpg`: Official U.S. government portraits from Wikipedia. These works are copyright-free and therefore in the public domain under the terms of Title 17, Chapter 1, Section 105 of the U.S Code. Users may freely use, modify, and distribute these images for any purpose without attribution requirements.
 
 - `boris-1.png`, `boris-2.png`: Screenshots from YouTube video (https://www.youtube.com/watch?v=hdYNcv-chgY). These images are licensed under Creative Commons Attribution license (reuse allowed). Users may use, modify, and distribute these images, but must provide appropriate attribution to the original source.
+
+- `two-people.jpg`, `two-people.mp4`: made from `boris-1.png`, `boris-2.png` and `trump1.jpg` by `data-raw/example-media.py`, under the same terms as those images (credit the YouTube video above for the Boris Johnson frames).
+
+## Citation
+
+If you use `transforEmotion` in your research, please cite:
+
+Tomašević, A., Golino, H., & Christensen, A. P. (2026). transforEmotion: An open-source R package for emotion analysis using transformer-based generative AI models. *Computational Communication Research*, *8*(2). <https://doi.org/10.5117/CCR2026.2.2.TOMA>
+
+```bibtex
+@article{tomasevic2026transforemotion,
+  title   = {{transforEmotion}: An Open-Source {R} Package for Emotion Analysis Using Transformer-Based Generative {AI} Models},
+  author  = {Toma{\v{s}}evi{\'c}, Aleksandar and Golino, Hudson and Christensen, Alexander P.},
+  journal = {Computational Communication Research},
+  year    = {2026},
+  volume  = {8},
+  number  = {2},
+  doi     = {10.5117/CCR2026.2.2.TOMA},
+  url     = {https://doi.org/10.5117/CCR2026.2.2.TOMA}
+}
+```
+
+The same entry is available from R with `citation("transforEmotion")`.
 
 ## References
 

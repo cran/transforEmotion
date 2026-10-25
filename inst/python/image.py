@@ -3,11 +3,11 @@ import urllib.request
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import numpy as np
 from transformers import CLIPProcessor, CLIPModel, CLIPTokenizer, AutoModel, BitsAndBytesConfig
-from transformers import CLIPTokenizerFast, CLIPImageProcessor
+from transformers import CLIPTokenizerFast, CLIPImageProcessor, CLIPVisionModel, PretrainedConfig
 import torch
 import requests
 import cv2
-from PIL import Image
+from PIL import Image, ImageOps
 import warnings
 from transformers import logging
 import torchvision.transforms as T
@@ -19,6 +19,8 @@ from transformers import AlignProcessor, AlignModel
 
 warnings.filterwarnings("ignore")
 logging.set_verbosity_error()
+
+import te_faces  # face detection, tracking and same-person ids (inst/python)
 
 # Load face detector once to avoid per-image overhead
 try:
@@ -74,6 +76,16 @@ class VisionModelAdapter(ABC):
         """
         pass
     
+    def text_embeddings(self, labels):
+        """L2-normalised text embeddings for the labels (one row per label)."""
+        text_embeds = self.model.get_text_features(**self.process_text(labels))
+        return text_embeds / text_embeds.norm(p=2, dim=-1, keepdim=True)
+
+    def image_embeddings(self, image):
+        """L2-normalised embedding of one PIL image (shape 1 x dim)."""
+        image_embeds = self.model.get_image_features(**self.process_image(image))
+        return image_embeds / image_embeds.norm(p=2, dim=-1, keepdim=True)
+
     @abstractmethod
     def compute_similarities(self, image_inputs, text_inputs):
         """Compute similarities between image and text inputs.
@@ -113,15 +125,58 @@ class VisionModelAdapter(ABC):
             return dict(zip(labels, probs.tolist()))
 
 
+def vision_only_base(source_path, local_files_only=False):
+    """Base CLIP model of a checkpoint that holds only a fine-tuned vision encoder.
+
+    Some fine-tuned CLIP checkpoints (for example tanganke/clip-vit-*_fer2013)
+    save only the vision encoder (model_type "clip_vision_model"); the text
+    encoder, projections and processor are those of the CLIP model they were
+    fine-tuned from, which save_pretrained() records as "_name_or_path".
+    Returns that base model's id or path, or None for a full CLIP checkpoint.
+    """
+    try:
+        config, _ = PretrainedConfig.get_config_dict(source_path, local_files_only=local_files_only)
+    except Exception:
+        return None
+    if config.get("model_type") != "clip_vision_model":
+        return None
+    base = config.get("_name_or_path")
+    if not base or os.path.abspath(str(base)) == os.path.abspath(str(source_path)):
+        raise ValueError(
+            f"'{source_path}' holds only a CLIP vision encoder, and its config.json does not "
+            "name the CLIP model it was fine-tuned from (\"_name_or_path\"), which provides "
+            "the text encoder."
+        )
+    return base
+
+
 class CLIPAdapter(VisionModelAdapter):
-    """Standard CLIP model adapter."""
-    
+    """Standard CLIP model adapter.
+
+    Also loads checkpoints that hold only a fine-tuned vision encoder: the
+    text encoder, projections and processor come from the base CLIP model
+    named in the checkpoint's config, and its vision encoder is replaced.
+    """
+
     def load_model(self):
         """Load standard CLIP model and processor."""
         source_path = self.local_model_path if self.local_model_path else self.model_id
         source_type = "local directory" if self.local_model_path else "HuggingFace"
         print(f"Loading CLIP model from {source_type}: {source_path}")
-        
+
+        base = vision_only_base(source_path, local_files_only=bool(self.local_model_path))
+        if base is not None:
+            print(f"Fine-tuned vision encoder: text encoder and processor from {base}")
+            self.processor = CLIPProcessor.from_pretrained(base)
+            self.model = CLIPModel.from_pretrained(base)
+            vision = CLIPVisionModel.from_pretrained(
+                source_path,
+                local_files_only=bool(self.local_model_path)
+            )
+            self.model.vision_model.load_state_dict(vision.vision_model.state_dict())
+            self.model = self.model.to(self.device)
+            return
+
         # Try the standard processor first
         try:
             self.processor = CLIPProcessor.from_pretrained(
@@ -212,64 +267,49 @@ class CLIPAdapter(VisionModelAdapter):
 
 
 class JinaCLIPAdapter(VisionModelAdapter):
-    """Jina CLIP v2 model adapter with custom preprocessing."""
-    
+    """Jina CLIP v2 adapter.
+
+    Jina CLIP v2 pairs a multilingual XLM-RoBERTa text tower with its own image
+    preprocessing, so labels and images go through the model's encode_text()
+    and encode_image(), which apply the tokenizer and image processor bundled
+    with the model. The OpenAI CLIP tokenizer cannot be used: its token ids mean
+    nothing to the XLM-RoBERTa tower.
+    """
+
     def load_model(self):
-        """Load Jina CLIP model with custom configuration."""
+        """Load Jina CLIP v2 with its remote code."""
         source_path = self.local_model_path if self.local_model_path else self.model_id
         source_type = "local directory" if self.local_model_path else "HuggingFace"
         print(f"Loading Jina CLIP model from {source_type}: {source_path}")
-        
+
         self.model = AutoModel.from_pretrained(
-            source_path, 
+            source_path,
             trust_remote_code=True,
             local_files_only=bool(self.local_model_path)
         )
         self.model = self.model.to(self.device)
-        
-        # Use standard tokenizer unless provided locally
-        tokenizer_path = self.local_model_path if self.local_model_path else "openai/clip-vit-base-patch32"
-        self.tokenizer = CLIPTokenizer.from_pretrained(
-            tokenizer_path,
-            local_files_only=bool(self.local_model_path)
-        )
-        
-        # Define Jina-specific transform
-        self.transform = T.Compose([
-            T.Resize(512, interpolation=InterpolationMode.BICUBIC),
-            T.CenterCrop(512),
-            T.ToTensor(),
-            T.Normalize((0.48145466, 0.4578275, 0.40821073),
-                      (0.26862954, 0.26130258, 0.27577711))
-        ])
-    
+        self.model.eval()
+
     def process_image(self, image):
-        """Process image with Jina-specific transform."""
-        image_tensor = self.transform(image).unsqueeze(0).to(self.device)
-        return {'pixel_values': image_tensor}
-    
+        """Defer preprocessing to encode_image()."""
+        return {'images': [image]}
+
     def process_text(self, labels):
-        """Process text with tokenizer."""
-        inputs = self.tokenizer(labels, return_tensors='pt', padding=True, truncation=True)
-        return {k: v.to(self.device) if isinstance(v, torch.Tensor) else v 
-               for k, v in inputs.items()}
-    
+        """Defer tokenization to encode_text()."""
+        return {'sentences': list(labels)}
+
+    def text_embeddings(self, labels):
+        return self.model.encode_text(list(labels), convert_to_tensor=True, device=self.device)
+
+    def image_embeddings(self, image):
+        return self.model.encode_image([image], convert_to_tensor=True, device=self.device)
+
     def compute_similarities(self, image_inputs, text_inputs):
-        """Compute Jina CLIP similarities."""
-        image_embeds = self.model.get_image_features(**image_inputs)
-        text_embeds = self.model.get_text_features(**text_inputs)
-        
-        # Normalize embeddings
-        image_embeds /= image_embeds.norm(p=2, dim=-1, keepdim=True)
-        text_embeds /= text_embeds.norm(p=2, dim=-1, keepdim=True)
-        
-        # Calculate similarity (Jina models may not have logit_scale)
-        logits_per_image = torch.matmul(image_embeds, text_embeds.t())
-        if hasattr(self.model, 'logit_scale'):
-            logits_per_image *= self.model.logit_scale.exp()
-        
-        probs = logits_per_image.softmax(dim=1).squeeze(0)
-        return probs
+        """Softmax over scaled cosine similarities (encode_* return unit vectors)."""
+        image_embeds = self.image_embeddings(image_inputs['images'][0])
+        text_embeds = self.text_embeddings(text_inputs['sentences'])
+        logits_per_image = torch.matmul(image_embeds, text_embeds.t()) * self.model.logit_scale.exp()
+        return logits_per_image.softmax(dim=1).squeeze(0)
 
 
 class EVACLIPAdapter(VisionModelAdapter):
@@ -604,20 +644,23 @@ def crop_face(image, padding=50, side='largest'):
     result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
     return Image.fromarray(result)
 
-def classify_image(image, labels, face, model_name="oai-base", local_model_path=None, model_architecture=None):
-    """Classify image emotions using specified model.
+def select_face_crop(pil_image, side='largest', face_detector='haar', padding=0.25):
+    """Crop the face that `side` picks; the whole image for 'none'; None if no face.
 
-    Args:
-        image: Path to image file or URL
-        labels: List of emotion labels to classify
-        face: Face selection strategy ('largest', 'left', 'right', 'none')
-        model_name: Name of HuggingFace model or predefined shorthand
-        local_model_path: Optional path to local model directory
+    face_detector 'haar' is crop_face() unchanged (fixed 50 px padding). 'yunet'
+    pads by a share of the box size, as face_scores() does.
     """
-    # Get appropriate adapter
-    adapter = get_vision_adapter(model_name, local_model_path, model_architecture)
-    
-    # Load and prepare image
+    if side == 'none' or face_detector == 'haar':
+        return crop_face(pil_image, side=side)
+    rgb = np.asarray(pil_image)
+    faces = te_faces.select(te_faces.detect(rgb, face_detector), side)
+    if not faces:
+        return None
+    f = faces[0]
+    return Image.fromarray(te_faces.crop(rgb, (f['x'], f['y'], f['width'], f['height']), padding))
+
+def _open_image(image, face_detector='haar'):
+    """Open a path or URL as an RGB PIL image; YuNet also applies EXIF rotation."""
     if not image.startswith('http'):
         if not os.path.exists(image):
             raise ValueError("Image file does not exist at the specified path")
@@ -627,11 +670,30 @@ def classify_image(image, labels, face, model_name="oai-base", local_model_path=
             pil_image = Image.open(requests.get(image, stream=True).raw)
         except:
             raise ValueError("Cannot retrieve image from URL")
+    if face_detector != 'haar':
+        pil_image = ImageOps.exif_transpose(pil_image)
+    return pil_image.convert('RGB')
 
-    pil_image = pil_image.convert('RGB')
+def classify_image(image, labels, face, model_name="oai-base", local_model_path=None, model_architecture=None,
+                   face_detector='haar'):
+    """Classify image emotions using specified model.
+
+    Args:
+        image: Path to image file or URL
+        labels: List of emotion labels to classify
+        face: Face selection strategy ('largest', 'left', 'right', 'none')
+        model_name: Name of HuggingFace model or predefined shorthand
+        local_model_path: Optional path to local model directory
+        face_detector: 'haar' (crop_face(), as before) or 'yunet'
+    """
+    # Get appropriate adapter
+    adapter = get_vision_adapter(model_name, local_model_path, model_architecture)
     
+    # Load and prepare image
+    pil_image = _open_image(image, face_detector)
+
     # Crop face unless explicitly disabled
-    processed_image = crop_face(pil_image, side=face)
+    processed_image = select_face_crop(pil_image, side=face, face_detector=face_detector)
     
     if processed_image is None:
         print('No face found in the image')
@@ -640,7 +702,8 @@ def classify_image(image, labels, face, model_name="oai-base", local_model_path=
     # Use adapter for inference
     return adapter(processed_image, labels)
 
-def classify_images_batch(images, labels, face='largest', model_name="oai-base", local_model_path=None, model_architecture=None):
+def classify_images_batch(images, labels, face='largest', model_name="oai-base", local_model_path=None, model_architecture=None,
+                          face_detector='haar'):
     """Classify a batch of images efficiently by computing text embeddings once.
 
     Args:
@@ -649,6 +712,7 @@ def classify_images_batch(images, labels, face='largest', model_name="oai-base",
         face: 'largest' | 'left' | 'right' | 'none'
         model_name: Model alias or HF id
         local_model_path: Optional local model directory
+        face_detector: 'haar' (crop_face(), as before) or 'yunet'
 
     Returns:
         pandas.DataFrame with one row per image: columns ['image_id', *labels]
@@ -669,10 +733,8 @@ def classify_images_batch(images, labels, face='largest', model_name="oai-base",
 
     with torch.no_grad():
         # Compute text embeddings once for efficiency
-        text_inputs = adapter.process_text(labels)
-        text_embeds = adapter.model.get_text_features(**text_inputs)
-        text_embeds = text_embeds / text_embeds.norm(p=2, dim=-1, keepdim=True)
-        
+        text_embeds = adapter.text_embeddings(labels)
+
         # Get logit scale if available
         logit_scale = adapter.model.logit_scale.exp() if hasattr(adapter.model, 'logit_scale') else torch.tensor(1.0, device=device)
 
@@ -689,19 +751,19 @@ def classify_images_batch(images, labels, face='largest', model_name="oai-base",
                     pil_image = Image.open(img)
                 else:
                     pil_image = Image.open(requests.get(img, stream=True).raw)
-                
+
+                if face_detector != 'haar':
+                    pil_image = ImageOps.exif_transpose(pil_image)
                 pil_image = pil_image.convert('RGB')
-                face_img = crop_face(pil_image, side=face)
+                face_img = select_face_crop(pil_image, side=face, face_detector=face_detector)
                 
                 if face_img is None:
                     results.append(row)
                     continue
                 
                 # Process image and compute similarities
-                image_inputs = adapter.process_image(face_img)
-                image_embeds = adapter.model.get_image_features(**image_inputs)
-                image_embeds = image_embeds / image_embeds.norm(p=2, dim=-1, keepdim=True)
-                
+                image_embeds = adapter.image_embeddings(face_img)
+
                 logits = torch.matmul(image_embeds, text_embeds.t()) * logit_scale
                 probs = logits.softmax(dim=1).squeeze(0).tolist()
                 
@@ -739,6 +801,31 @@ def classify_images_batch(images, labels, face='largest', model_name="oai-base",
     df = df[cols]
     return df
 
+def classify_face_boxes(images, boxes, labels, model_name="oai-base", local_model_path=None,
+                        model_architecture=None, padding=0.25):
+    """Score given face boxes, one row per (image, box) pair in input order.
+
+    Args:
+        images: List of image paths or URLs (repeated for each box)
+        boxes: List of [x, y, width, height] in pixels of the EXIF-rotated
+            image, as te_faces.faces_table() (detect_faces() in R) reports them
+        labels: List of labels
+        padding: Share of the box size added on each side of the crop
+
+    Returns:
+        pandas.DataFrame with one column per label
+    """
+    adapter = get_vision_adapter(model_name, local_model_path, model_architecture)
+    rows = []
+    current, rgb = None, None
+    for img, box in zip(images, boxes):
+        if img != current:  # rows of one image are adjacent; load it once
+            rgb = np.asarray(te_faces.load_image(img))
+            current = img
+        face_img = Image.fromarray(te_faces.crop(rgb, box, padding))
+        rows.append(adapter(face_img, list(labels)))
+    return pd.DataFrame(rows, columns=list(labels))
+
 # ============================================================================
 # Model Registry and Factory Functions
 # ============================================================================
@@ -764,7 +851,18 @@ MODEL_ID_MAP = {
 }
 
 # Global registry for loaded adapters (for caching)
-_loaded_adapters = {}
+# The R functions source_python() this file on every call; keep loaded models
+# across re-sourcing instead of reloading them each time.
+_loaded_adapters = globals().get("_loaded_adapters", {})
+
+def _custom_clip_adapter(model_name):
+    """Pick the CLIP-family adapter from a model alias or HuggingFace id."""
+    lower_name = str(model_name).lower()
+    if "jina" in lower_name:
+        return JinaCLIPAdapter
+    if "eva" in lower_name:
+        return EVACLIPAdapter
+    return CLIPAdapter
 
 def get_vision_adapter(model_name, local_model_path=None, architecture=None):
     """Factory function to get appropriate vision model adapter.
@@ -776,8 +874,9 @@ def get_vision_adapter(model_name, local_model_path=None, architecture=None):
     Returns:
         VisionModelAdapter: Appropriate adapter instance
     """
-    # Create cache key
-    cache_key = f"{model_name}_{local_model_path or 'remote'}"
+    # Create cache key; the architecture hint picks the adapter, so a model
+    # re-registered with another architecture must not reuse the cached one
+    cache_key = (model_name, local_model_path or "remote", str(architecture).lower())
     
     # Return cached adapter if available
     if cache_key in _loaded_adapters:
@@ -793,6 +892,10 @@ def get_vision_adapter(model_name, local_model_path=None, architecture=None):
         elif arch.startswith("align") or "align" in arch:
             adapter_class = AlignAdapter
             print(f"Using ALIGN adapter (via registry) for: {model_name}")
+        elif arch == "clip-custom":
+            # CLIP variants with their own loading code (Jina, EVA)
+            adapter_class = _custom_clip_adapter(model_name)
+            print(f"Using {adapter_class.__name__} (via registry) for: {model_name}")
         elif arch.startswith("clip"):
             adapter_class = CLIPAdapter
             print(f"Using CLIP adapter (via registry) for: {model_name}")
@@ -814,15 +917,9 @@ def get_vision_adapter(model_name, local_model_path=None, architecture=None):
         elif "align" in lower_name:
             adapter_class = AlignAdapter
             print(f"Using ALIGN adapter for model: {model_name}")
-        elif "jina" in lower_name:
-            adapter_class = JinaCLIPAdapter
-            print(f"Using Jina CLIP adapter for model: {model_name}")
-        elif "eva" in lower_name:
-            adapter_class = EVACLIPAdapter
-            print(f"Using EVA CLIP adapter for model: {model_name}")
         else:
-            adapter_class = CLIPAdapter
-            print(f"Using standard CLIP adapter for model: {model_name}")
+            adapter_class = _custom_clip_adapter(model_name)
+            print(f"Using {adapter_class.__name__} for model: {model_name}")
     
     # Create and cache adapter
     adapter = adapter_class(model_id, local_model_path)

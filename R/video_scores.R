@@ -6,20 +6,35 @@
 #' @param classes A character vector specifying the classes to analyze.
 #' @param nframes The number of frames to analyze in the video. Default is 100.
 #' @param face_selection The method for selecting faces in the video. Options are
-#'   "largest", "left", "right", or "none". Default is "largest". Use "none"
-#'   to classify the whole frame without face cropping.
+#'   "largest", "left", "right", "none", "all", or a data frame of faces.
+#'   Default is "largest". Use "none" to classify the whole frame without face
+#'   cropping. These four pick one face per frame and return one row per
+#'   frame, as before. "all" scores every face in every frame, and a data
+#'   frame from \code{\link{detect_faces}} or \code{\link{select_faces}} (for
+#'   example the faces of one person) scores those faces; both return one row
+#'   per face with its frame, time, track and person (see
+#'   \code{\link{face_scores}}). A data frame of faces brings its own frame
+#'   sampling settings, so \code{nframes}, \code{start}, \code{end},
+#'   \code{uniform} and \code{ffreq} are ignored.
 #' @param start The start time of the video range to analyze. Default is 0.
 #' @param end The end time of the video range to analyze. Default is -1 and this means that video won't be cut. If end is a positive number greater than start, the video will be cut from start to end.
 #' @param uniform Logical indicating whether to uniformly sample frames from the video. Default is FALSE.
 #' @param ffreq The frame frequency for sampling frames from the video. Default is 15.
 #' @param save_video Logical indicating whether to save the analyzed video. Default is FALSE.
+#'   A saved YouTube video has no sound when YouTube offers no stream with
+#'   video and audio in one file, which is now the usual case; use
+#'   \code{\link{speech_scores}} for the audio.
 #' @param save_frames Logical indicating whether to save the analyzed frames. Default is FALSE.
 #' @param save_dir The directory to save the analyzed frames. Default is "temp/".
 #' @param video_name The name of the analyzed video. Default is "temp".
 #' @param model A string specifying the vision model to use. Options include:
 #'   \itemize{
-#'     \item Built-in models: "oai-base" (default), "oai-large", "eva-8B", "jina-v2"
-#'     \item Any valid HuggingFace model ID
+#'     \item Built-in models: "oai-base" (default), "oai-large", "eva-8B", "jina-v2",
+#'       "oai-base-fer" and "oai-large-fer" (OpenAI CLIP with the vision encoder
+#'       fine-tuned on the FER2013 facial-expression dataset)
+#'     \item Any valid HuggingFace model ID, including checkpoints that hold only
+#'       a fine-tuned CLIP vision encoder; their text encoder and processor come
+#'       from the base CLIP model named in the checkpoint's config
 #'     \item Custom registered models (see \code{\link{register_vision_model}})
 #'   }
 #'   Use \code{\link{list_vision_models}} to see all available models.
@@ -38,7 +53,11 @@
 #'
 #'   Warning: Using very large models from local paths may cause memory issues or crashes
 #'   depending on your system's resources, especially when processing videos with many frames.
-#' @return A result object containing the analyzed video scores.
+#' @param face_detector \code{"yunet"} (default), OpenCV's YuNet face detector,
+#'   or \code{"haar"}, the Haar cascade used before version 0.1.8. Use
+#'   \code{"haar"} to reproduce scores from earlier versions.
+#' @return A data frame of scores, one row per frame that could be read (or
+#'   one row per face; see \code{face_selection}).
 #'
 #' @section Data Privacy:
 #'   All processing is done locally with the downloaded model,
@@ -53,9 +72,15 @@
 video_scores <- function(video, classes, nframes = 100, face_selection = "largest",
                          start = 0, end = -1, uniform = FALSE, ffreq = 15,
                          save_video = FALSE, save_frames = FALSE, save_dir = "temp/",
-                         video_name = "temp", model = "oai-base", local_model_path = NULL) {
-  # Ensure reticulate uses the transforEmotion conda environment
+                         video_name = "temp", model = "oai-base", local_model_path = NULL,
+                         face_detector = c("yunet", "haar")) {
+  # Declare Python requirements; pytubefix is only needed for YouTube URLs
   ensure_te_py_env()
+  is_youtube <- is.character(video) && length(video) == 1 && .te_is_youtube_url(video)
+  if (is_youtube) {
+    .te_require("youtube")
+  }
+  if (.te_uses_eva_adapter(model) && .te_uses_gpu()) .te_require("gpu")
 
   # Suppress TensorFlow messages
   Sys.setenv(TF_CPP_MIN_LOG_LEVEL = "2")
@@ -70,7 +95,7 @@ video_scores <- function(video, classes, nframes = 100, face_selection = "larges
   # If import fails, try setting up modules
   if(inherits(modules_import, "try-error")) {
     message("Required Python modules not found. Setting up modules...")
-    setup_modules()
+    setup_modules(download_models = FALSE)
     image_module <- reticulate::source_python(system.file("python", "image.py", package = "transforEmotion"))
     video_module <- reticulate::source_python(system.file("python", "video.py", package = "transforEmotion"))
   }
@@ -86,13 +111,17 @@ video_scores <- function(video, classes, nframes = 100, face_selection = "larges
   }
 
   # Check if face_selection is valid
-  if(!face_selection %in% c("largest", "left", "right", "none")){
-    stop("Argument face_selection must be one of: largest, left, right, none")
-  }
+  selection <- .te_face_selection(face_selection, allow_ids = FALSE)
+  face_detector <- match.arg(face_detector)
 
   # Validate model using registry system
   model_architecture <- NULL
   actual_model_id <- model
+  # Checked outside tryCatch() so the error is not replaced by "not recognized"
+  if (!is.null(local_model_path) && !dir.exists(local_model_path)) {
+    stop("The specified local_model_path directory does not exist: ", local_model_path)
+  }
+
   tryCatch({
     if (is_vision_model_registered(model)) {
       model_config <- get_vision_model_config(model)
@@ -103,9 +132,6 @@ video_scores <- function(video, classes, nframes = 100, face_selection = "larges
         message("Note: This model requires special handling and may be memory-intensive for video processing")
       }
     } else if (!is.null(local_model_path)) {
-      if (!dir.exists(local_model_path)) {
-        stop("The specified local_model_path directory does not exist.")
-      }
       message("Using local model from: ", local_model_path)
     } else {
       message("Using model directly from HuggingFace Hub: ", model)
@@ -131,9 +157,35 @@ video_scores <- function(video, classes, nframes = 100, face_selection = "larges
     if(!file.exists(video)){
       stop("Video file does not exist. If path is an URL make sure it includes http:// or https://")
     }}
-  else { if(!grepl("youtu", video)){
+  else { if(!is_youtube){
     stop("You need to provide a YouTube video URL.")
   }
+  }
+
+  # Remove the frames (and the downloaded video) this call creates, also when
+  # processing fails or is interrupted
+  cleanup <- .te_video_cleanup_plan(save_dir, video_name, nframes, save_frames,
+                                    save_video || !is_youtube)
+  on.exit(cleanup(), add = TRUE)
+
+  # All faces or a faces table: one row per face
+  if (selection$mode != "rule") {
+    faces <- if (selection$mode == "table") {
+      table <- selection$value
+      same <- table$source == video |
+        normalizePath(table$source, mustWork = FALSE) == normalizePath(video, mustWork = FALSE)
+      if (!all(same)) {
+        stop("face_selection holds faces of another video.", call. = FALSE)
+      }
+      table
+    } else {
+      detect_faces(video, face_detector = face_detector, nframes = nframes,
+                   start = start, end = end, uniform = uniform, ffreq = ffreq,
+                   save_frames = TRUE, save_video = TRUE, save_dir = save_dir,
+                   video_name = video_name)
+    }
+    vision <- list(model_id = actual_model_id, architecture = model_architecture)
+    return(.te_face_scores(faces, classes, vision, local_model_path))
   }
 
   result <- without_hf_token({
@@ -150,15 +202,31 @@ video_scores <- function(video, classes, nframes = 100, face_selection = "larges
       video_name = video_name,
       model_name = actual_model_id,
       model_architecture = model_architecture,
-      local_model_path = local_model_path
+      local_model_path = local_model_path,
+      face_detector = face_detector,
+      youtube = is_youtube
     )
   })
 
-  if (!save_video && grepl("youtu", video)){
-    file.remove(paste0(save_dir, video_name, ".mp4"))
-  }
-  if(!save_frames){
-     file.remove(paste0(save_dir, list.files(save_dir, pattern = ".jpg")))
-  }
   return(result)
+}
+
+#' @noRd
+# Returns a function that removes the files yt_analyze() writes for this call
+# (<video_name>-frame-<i>.jpg and, for YouTube, <video_name>.mp4) unless they
+# are to be kept. Only files absent when the plan is made are removed, so
+# frames of other videos (including names that share a prefix) and files
+# already in save_dir are left alone.
+.te_video_cleanup_plan <- function(save_dir, video_name, nframes, keep_frames,
+                                   keep_video) {
+  n <- max(0L, as.integer(nframes))
+  frames <- file.path(save_dir, sprintf("%s-frame-%d.jpg", video_name, seq_len(n) - 1L))
+  video <- file.path(save_dir, paste0(video_name, ".mp4"))
+  targets <- c(character(), if (!keep_frames) frames, if (!keep_video) video)
+  targets <- targets[!file.exists(targets)]
+  function() {
+    created <- targets[file.exists(targets)]
+    if (length(created)) file.remove(created)
+    invisible(created)
+  }
 }

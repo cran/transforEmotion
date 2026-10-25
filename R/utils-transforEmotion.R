@@ -467,9 +467,9 @@ system.check <- function (...)
 
   RSTUDIO <- ifelse(Sys.getenv("RSTUDIO") == "1", TRUE, FALSE)
 
-  TEXT <- TRUE
-
-  if(!RSTUDIO){if(OS != "linux"){TEXT <- FALSE}}
+  # Styled text uses ANSI escape codes: RStudio renders them, and so does a
+  # Linux terminal, but notebooks (Jupyter, Google Colab) print them verbatim
+  TEXT <- RSTUDIO || (OS == "linux" && isatty(stderr()) && Sys.getenv("TERM") != "dumb")
 
   res <- list()
 
@@ -631,3 +631,9 @@ textsymbol <- function(symbol = c("alpha", "beta", "chi", "delta",
   return(sym)
 }
 
+#' @noRd
+# A YouTube video URL: http(s), host youtube.com (any subdomain) or youtu.be.
+# A local path that contains "youtube" is not one.
+.te_is_youtube_url <- function(x) {
+  grepl("^https?://([a-z0-9-]+\\.)*(youtube\\.com|youtu\\.be)(/|$)", x, ignore.case = TRUE)
+}

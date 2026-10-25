@@ -1,3 +1,107 @@
+# Changes in version 0.1.8
+
+o CHANGE: `remotes` moved from Imports to Suggests. Only `emoxicon_scores()` uses it, to install emoxicon from GitHub, and it is loaded then rather than when transforEmotion is attached
+
+o FIX: `library(transforEmotion)` failed on machines without OpenGL (`libGLU.so.1`) and warned about a missing display during `R CMD check`, because importing `LSAfun` loaded `rgl` at startup. `LSAfun` is now suggested and is loaded only by `nlp_scores()`, which is the only function that uses it
+
+o FIX: the Krippendorff reference on `annotation_agreement()` pointed at a University of Pennsylvania repository URL that now redirects, and the SNLI project page linked from `transformer_scores()` no longer accepts HTTPS connections. The help pages use the current repository item and the Hugging Face copy of the SNLI corpus
+
+o FIX: `map_discrete_to_vad(cache_lexicon = TRUE)` (the default) failed after loading the NRC VAD lexicon, because it tried to store the lexicon in the locked package namespace. An empty list, as from `transformer_scores()` with no texts, failed with "arguments imply differing number of rows"
+
+o ADD: `speech_scores()` scores segments of the audio track of an audio file, a video file or a YouTube video against user-defined classes with LAION CLAP (`laion/larger_clap_music_and_speech`, zero-shot), one row per segment with its start and end time. `nsegments`, `segment_length` (at most 10 s), `start`, `end` and `uniform` choose the segments, as `nframes`, `start`, `end` and `uniform` choose the frames in `video_scores()`. Audio is read with PyAV (`av`, which bundles FFmpeg), added on first use; prepare it with `setup_modules(extras = "audio")`. For YouTube URLs only the audio is downloaded
+
+o FIX: `video_scores()` and `detect_faces()` failed for every YouTube URL with "Failed to get video stream after 3 attempts", because YouTube no longer offers progressive streams (video and audio in one file). They now download the highest H.264 video-only MP4 at 720p or below when no progressive stream exists, so a video kept with `save_video = TRUE` has no sound
+
+o FIX: `video_scores()` and `detect_faces()` treated every input that contained "youtu" as a YouTube URL, so a local file such as `youtube/clip.mp4` was sent to the YouTube download and failed. Only http(s) URLs on youtube.com or youtu.be count as YouTube videos now, as in `speech_scores()`
+
+o CHANGE: faster, smaller Python setup. The first environment build downloads about 500 MB instead of about 3.4 GB on Linux, and later sessions reuse the cached environment in under a second
+
+o CHANGE: PyTorch is installed as a CPU-only build unless an NVIDIA GPU is detected (CUDA 12.6 build on Linux and Windows); override with `TE_FORCE_CPU=1` or `TRANSFOREMOTION_USE_GPU=1`
+
+o CHANGE: Python 3.12 instead of 3.10; transformers 4.46, sentence-transformers 5.x and opencv-python-headless replace the older pins; TensorFlow, which was never used, is no longer installed
+
+o CHANGE: packages for optional features are added on first use: LlamaIndex in `rag()`, `pytubefix` in `video_scores()` for YouTube URLs, `findingemo-light` in the FindingEmo functions and `bitsandbytes` for EVA-CLIP-8B on a GPU
+
+o CHANGE: `rag()` installs `llama-index-core` instead of the `llama-index` meta-package, so `llama-index-legacy` and the OpenAI integrations are no longer installed
+
+o CHANGE: `setup_modules()` gains `extras` and `download_models` arguments and now downloads the default models; `setup_gpu_modules()` now installs only `bitsandbytes` (AutoAWQ, Auto-GPTQ, Optimum and llama-cpp-python were never used)
+
+o CHANGE: uv is no longer installed by the package or prompted for when it is attached; reticulate downloads uv itself when needed. Requires reticulate >= 1.45.0
+
+o ADD: `setup_cache()` keeps the Python environment, Python itself and the models in one folder and can run offline, for HPC clusters whose compute nodes have no internet access
+
+o ADD: `python_requirements()` returns the Python requirements, and `TRANSFOREMOTION_PYTHON` makes transforEmotion use a fixed Python environment, for read-only environments such as Apptainer images
+
+o ADD: `docker/Dockerfile` builds an offline image with the package, a fixed Python environment and the default models (CPU or CUDA); a GitHub Actions workflow publishes it to GHCR
+
+o ADD: `setup_modules()` gains a `models` argument for additional Hugging Face models, and with `extras = "rag"` also downloads the rag() models and the NLTK data LlamaIndex needs
+
+o FIX: installation failed on Apple Silicon Macs because `tensorflow-cpu` has no macOS arm64 wheels, and the failure was hidden
+
+o FIX: on NVIDIA GPUs, `rag()` returned empty results because Triton, which PyTorch uses for some GPU kernels, could not compile its helper ("Python.h: No such file or directory"); the package now points C compilers at the Python headers when Python starts
+
+o FIX: `rag()` warned that structured outputs need Gemma on every call with the default `output`, because the check ran before `output` was resolved
+
+o ADD: Google Colab notebook (`notebooks/transforEmotion_colab.ipynb`) with text, image, video and RAG demos, linked from the README
+
+o FIX: `video_scores()` deleted every .jpg file in `save_dir` when `save_frames = FALSE`, and built wrong paths (so frames were left behind, with a warning per frame) when `save_dir` had no trailing slash; it now deletes only the frames it wrote
+
+o FIX: the startup message printed raw ANSI escape codes in Jupyter and Google Colab notebooks; text is now styled only in RStudio and terminals
+
+o FIX: `image_scores()`, `image_scores_dir()` and `video_scores()` report a missing `local_model_path` directory instead of "Model not recognized"
+
+o ADD: vision models "oai-base-fer" and "oai-large-fer", OpenAI CLIP B/32 and L/14 with the vision encoder fine-tuned on FER2013 (tanganke/clip-vit-*_fer2013). On MAFW video clips, accuracy for seven basic emotions rose from 0.33 to 0.48 with `oai-large-fer` (labels such as "a photo of an angry face"); see the README
+
+o ADD: `image_scores()`, `image_scores_dir()` and `video_scores()` accept Hugging Face checkpoints that hold only a fine-tuned CLIP vision encoder; the text encoder and processor come from the base CLIP model named in the checkpoint's config
+
+o FIX: `model = "jina-v2"` failed with "'tokenizers.models.Unigram' object has no attribute 'end_of_word_suffix'": models registered as "clip-custom" (Jina CLIP v2, EVA-CLIP-8B) were loaded with the standard CLIP adapter. They now get their own adapters, and the Jina adapter uses the model's own multilingual tokenizer and image preprocessing (`encode_text()`, `encode_image()`) instead of the English OpenAI CLIP tokenizer, so labels in other languages work
+
+o FIX: on Linux, PyTorch computed matrix products with R's BLAS instead of its own MKL, because R's BLAS is loaded first and both export `sgemm_`; with R's reference BLAS, CPU inference was tens of times slower (Jina CLIP v2: about 330 s instead of 11 s per image). torch is now imported with `RTLD_DEEPBIND` when Python starts
+
+o FIX: `image_scores()`, `image_scores_dir()` and `video_scores()` reloaded the vision model on every call, because re-sourcing the Python module emptied the model cache
+
+o CHANGE: citation now points to the published article in Computational Communication Research (doi:10.5117/CCR2026.2.2.TOMA); see `citation("transforEmotion")`
+
+o ADD: `detect_faces()` finds every face in images or in the frames sampled from a video and returns one row per face with its box, confidence, five landmarks, a track id that follows the face across video frames, and a `person_id` shared by faces of the same person (across images, or across all tracks of a video, so a person who leaves and comes back keeps one id). `select_faces()` keeps faces by rule, face number, track or person, and `face_scores()` scores exactly those faces
+
+o ADD: `draw_faces()`, or `plot()` on a `detect_faces()` result, draws each face's box with its face or track number and person on the image or video frame, in one colour per person, and shows the drawn images in the plot window or below a notebook cell
+
+o ADD: `view_faces()` shows the faces of a `detect_faces()` table in the web browser, coloured by person, with a list of the people found. R serves the page itself (with httpuv, on 127.0.0.1 only). With `select = TRUE`, faces, video tracks or people can be clicked, and Send to R returns the chosen faces from `view_faces()`. With `live = FALSE`, the page is a folder that also works when opened from disk, and `read_face_selection()` reads its exported choice
+
+o ADD: in a Jupyter notebook, including Google Colab, `view_faces()` shows the page below the cell (`inline = TRUE`, the default there), as one self-contained page with smaller copies of the images (`max_side` 640). In select mode, **Copy R code** gives a line such as `chosen <- read_face_selection("te-selection:...", faces)` to run in a new cell, because a page served from R cannot be reached from a notebook running on another computer
+
+o ADD: manual face annotation. `annotation_task()` turns detected faces into a coding task for one or more coders (each face shown outlined in its picture with a close-up; a first question marks detector mistakes, then emotion and ratings; `annotation_questions()` has ready-made questions and takes your own). `annotate_faces()` starts the coding page from R and saves every answer in the task's folder as it is given, so coders can stop and continue. `read_annotations()`, `annotation_progress()`, `annotation_agreement()` (Krippendorff's alpha, Fleiss' kappa, percent agreement) and `consensus_labels()` turn the answers into agreement figures and a truth for `evaluate_emotions()`. In a Jupyter notebook such as Google Colab, `annotate_faces()` shows the coding page below the cell, and **Copy R code** gives a line, `answers <- read_annotations(task, "te-annotations:...")`, to run in a new cell. The new vignette "Checking faces and coding them by hand" walks through it
+
+o ADD: `annotation_task(items = ...)` makes a coding task of video clips, images or texts instead of single faces, for example the clips a model got wrong. Coders see sampled frames of each clip (`frames`, default 4) with its face boxes, the largest face (the one `video_scores()` scores by default) drawn solid, the clip itself with its sound (`play`), and the item's text. With a reference `label` and a model `prediction` in the items, the page shows them and the model's scores once the coder has answered (`blind = TRUE`), then asks what explains the result: the new ready-made question `annotation_questions("why")` (the model is wrong, the label is debatable, the wrong face was scored, no face is visible, they agree). Questions can wait for that with `reveal = TRUE`. `annotate_faces()` runs these tasks too, in the browser or in a notebook; `read_annotations()` and `consensus_labels()` return each item's `id`, `reference`, `prediction` and scores, ready for `evaluate_emotions()`
+
+o ADD: example files `two-people.jpg` (two people side by side) and `two-people.mp4` (12 s: two people, a black gap, then one of them alone) in `inst/extdata`, for trying the face functions
+
+o ADD: `face_selection` in `image_scores()`, `image_scores_dir()` and `video_scores()` also takes `"all"` (one row per face), face numbers (`image_scores()`), or a data frame from `detect_faces()` or `select_faces()`, for example the faces of one person in a video
+
+o ADD: same-person recognition uses OpenCV's SFace model (10 MB, Apache 2.0), downloaded on first use or by `setup_modules()`; set `TRANSFOREMOTION_SFACE_MODEL` to use a copy on a computer without internet access. Face embeddings stay in memory and are never returned or saved; `identify = FALSE` turns recognition off
+
+o ADD: `calibrate_scores()` and `posterior_scores()` treat frame scores as noisy evidence instead of taking them at face value. `calibrate_scores()` learns a model's average score for each class (its lean towards some labels) and, from videos with known emotions, its confusions; `posterior_scores()` combines each frame with the frames before it (a hidden Markov model over the emotions; `method = "smooth"` also uses the frames after it) and returns posteriors for every frame and for each clip. On held-out CREMA-D clips with six labels, clip accuracy against the face-only vote rose from 0.55 to 0.59 without labels and to 0.61 with labels for "oai-base-fer", and from 0.28 to 0.37 and 0.40 for "oai-base"; the top label of a frame changes about 0.5 times a second instead of 3 to 4
+
+o CHANGE: faces are found with OpenCV's YuNet detector (a 230 KB model shipped with the package) instead of a Haar cascade. YuNet also finds small, tilted and partly turned faces, so the face that is scored, and therefore the scores, can differ from earlier versions; `face_detector = "haar"` in `image_scores()`, `image_scores_dir()` and `video_scores()` reproduces earlier results
+
+o CHANGE: with YuNet, images are rotated by their EXIF orientation before faces are detected, as phone photos are displayed
+
+o FIX: `video_scores()` scored the wrong frames after a frame that could not be read: it looked frames up by a running count, so it scored a missing (or leftover) frame file and dropped the last frame. Unreadable frames are now left out, and the result has one row per frame that was read
+
+o FIX: `video_scores(uniform = TRUE)` failed with "Video is too short for requested number of frames" whenever `ffreq * nframes` exceeded the video's length, although uniform sampling does not use `ffreq`, and could ask for frames past the end. Frames are now spread evenly over the whole video (or the `start`-`end` cut), and a cut video no longer samples frames past `end`
+
+o FIX: `evaluate_emotions()` reported Scott's pi as Krippendorff's alpha; the expected disagreement now counts pairs of values without replacement, as Krippendorff's alpha does, so alpha is slightly higher for small samples
+
+o FIX: `image_scores_dir(recursive = TRUE)` warns when images in different folders share a file name, since their `image_id` is the same
+
+o FIX: the documentation said that an image without a face returns `NULL`; it returns one row of `NA` scores
+
+
+# Changes in version 0.1.7
+
+o No NEWS entry was recorded for this release
+
+
 # Changes in version 0.1.6
 
 o ADD: `sentence_similarity` to apply {sentence-transformers} to get similarity between texts

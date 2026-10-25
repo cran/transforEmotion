@@ -32,34 +32,34 @@ knitr::opts_chunk$set(
 library(transforEmotion)
 ```
 
-## 1. Python setup using `setup_miniconda()`  {#section_1}
+## 1. Python setup using `setup_modules()`  {#section_1}
 
-*transforEmotion* uses the *reticulate* package to automatically install a standalone miniconda version on your computer and download the necessary Python modules to run the transformer models.
+*transforEmotion* runs its transformer models in Python through the *reticulate* package. You do not need to install Python yourself: on first use, *reticulate* builds an isolated Python environment with [uv](https://docs.astral.sh/uv/), downloading uv itself if it is not installed. The environment does not interfere with any existing Python installation.
 
-After installing *transforEmotion* package, you need to run `setup_miniconda()` function. This function will performs the following tasks:
+The first build downloads about 500 MB of Python packages. Later R sessions reuse the cached environment and start in under a second.
 
-1. Install a standalone miniconda version on your computer.
-2. Setup a virtual Python environment for *transforEmotion* package.
-3. Install the necessary Python modules to run the transformer models.
+You can run the setup ahead of time with `setup_modules()`. It builds the environment and downloads the default text, image and sentence-similarity models (about 1 GB), so the first analysis does not wait on either:
 
-By having a standalone miniconda installed through *transforEmotion*, you should not encounter any conflicts between miniconda and existing Python installations. It also ensures that the correct version of Python libraries are installed into the virtual environment, guaranteeing compatibility regardless of your operating system or whether you already have Python installed.
+```{r setup_modules, eval = FALSE, echo = TRUE}
+setup_modules()
+```
 
-The miniconda installation process takes a few minutes to complete. At certain points, it may appear that the installer is stuck, but please allow a few minutes for the installer to finish its process. Remember, `setup_miniconda()` only needs to be run once after installing the package. Unless you run into issues with Python environment and libraries later on, there is no need to run this function again on the same system.
+Running `setup_modules()` is optional; every function sets up what it needs on first use. Packages for optional features, such as `rag()`, are added when those functions are first called, or ahead of time with `setup_modules(extras = "rag")`.
 
 
 ## 2. Using `transformer_scores` {#section_2}
 
 You can use any number of \href{https://huggingface.co}{Hugging Face} text classification transformers. *transforEmotion* currently implements only the zero-shot classification models. Future updates to the package may include opportunities to train and fine-tune these models. For now, there are several options that work well for most classification tasks straight out-of-the-box. You can view different transformers that can be used in *transforEmotion* [here](https://huggingface.co/models?pipeline_tag=zero-shot-classification).
 
-As mentioned in section [1](#section_1), before running the `transformer_scores` function, you need to execute `setup_miniconda()` to install the necessary modules. Running the `transformer_scores` function will also trigger the download of the [Cross-Encoder's DistilRoBERTa](https://huggingface.co/cross-encoder/nli-distilroberta-base) transformer model. Therefore, the easiest way to get started is by using an example.
+As mentioned in section [1](#section_1), the Python environment is set up automatically the first time you run `transformer_scores`. The first run will also trigger the download of the [Cross-Encoder's DistilRoBERTa](https://huggingface.co/cross-encoder/nli-distilroberta-base) transformer model. Therefore, the easiest way to get started is by using an example.
 
 ```{r transformers_scores, eval = FALSE, echo = TRUE, comment = NA, warning = FALSE, message = FALSE}
 
 library(transforEmotion)
 
-# Setup Python
+# Setup Python (optional)
 
-setup_miniconda()
+setup_modules()
 
 # Load data
 
@@ -118,7 +118,7 @@ The main input of this function is the path to image. It can be a local filepath
 
 ```{r image_scores, eval = FALSE, echo = TRUE, comment = NA, warning = FALSE, message = FALSE}
 
-image <- ""https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/402px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg"
+image <- "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/402px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg"
 
 emotions <- c("excitement", "happiness", "pride", "anger", "fear", "sadness", "neutral")
 
@@ -132,7 +132,7 @@ This code runs FER on the Mona Lisa painting and returns the following output, a
 1 0.02142187 0.02024468 0.0604699 0.04037686 0.03273294 0.1061871 0.7185667
 ```
 
-In case there is no face recognized on the image, the function will return an empty dataframe, preceeded by a warning message. We can test this with an image of three penguins from the South Shetland Islands.
+In case there is no face recognized on the image, the function will return one row of `NA` scores, preceded by a message. We can test this with an image of three penguins from the South Shetland Islands.
 
 ```{r image_scores_nas, eval = FALSE, echo = TRUE, comment = NA, warning = FALSE, message = FALSE}
 
@@ -145,7 +145,8 @@ This gives the following output:
 
 ```{r image_scores_nas_output, eval = FALSE, echo = TRUE, comment = NA, warning = FALSE}
 No face found in the image
-data frame with 0 columns and 0 rows
+  excitement happiness pride anger fear sadness neutral
+1         NA        NA    NA    NA   NA      NA      NA
 ```
 
 ## 4. Using `video_scores' {#section_4}

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Checking faces and coding them by hand</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Checking faces and coding them by hand</h1>
+
+
+
+<p>This vignette goes from a video to the faces in it, to choosing which
+faces to analyse, to a round of manual coding, and from there to a check
+of the model’s scores against the coders. The code needs the package’s
+Python environment and a web browser, so it is shown here without being
+run.</p>
+<div id="find-the-faces" class="section level2">
+<h2>Find the faces</h2>
+<p><code>detect_faces()</code> finds every face in the sampled frames of
+a video, follows each face from frame to frame as a track, and groups
+tracks of the same person (<code>person_id</code>). The example clip
+shows two people, then a black gap, then one of them alone.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(transforEmotion)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>clip <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;two-people.mp4&quot;</span>, <span class="at">package =</span> <span class="st">&quot;transforEmotion&quot;</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>faces <span class="ot">&lt;-</span> <span class="fu">detect_faces</span>(clip, <span class="at">nframes =</span> <span class="dv">20</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">table</span>(faces<span class="sc">$</span>track_id, faces<span class="sc">$</span>person_id)</span></code></pre></div>
+</div>
+<div id="look-at-them-and-choose" class="section level2">
+<h2>Look at them, and choose</h2>
+<p><code>view_faces()</code> starts a page from R and opens it in your
+browser. Every sampled frame is shown with its boxes, in one colour per
+person, and a People panel lists who appears where.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">view_faces</span>(faces)</span></code></pre></div>
+<p>With <code>select = TRUE</code>, click faces, whole tracks or people,
+then <strong>Send to R</strong>: <code>view_faces()</code> returns those
+rows.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>chosen <span class="ot">&lt;-</span> <span class="fu">view_faces</span>(faces, <span class="at">select =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>scores <span class="ot">&lt;-</span> <span class="fu">face_scores</span>(chosen, <span class="at">classes =</span> <span class="fu">c</span>(<span class="st">&quot;happy&quot;</span>, <span class="st">&quot;sad&quot;</span>, <span class="st">&quot;angry&quot;</span>, <span class="st">&quot;neutral&quot;</span>))</span></code></pre></div>
+<p>The same choice can be made without a browser:
+<code>select_faces(faces, persons = &quot;p1&quot;)</code>.</p>
+</div>
+<div id="set-up-a-coding-task" class="section level2">
+<h2>Set up a coding task</h2>
+<p><code>annotation_task()</code> turns faces into items for coders.
+Each item shows one face outlined in its frame, with a close-up, and
+asks first whether the outline holds a face at all; only then does it
+ask for the emotion and its intensity. Detector mistakes are therefore
+marked as such and never get an emotion.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>emotions <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;happy&quot;</span>, <span class="st">&quot;sad&quot;</span>, <span class="st">&quot;angry&quot;</span>, <span class="st">&quot;neutral&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>task <span class="ot">&lt;-</span> <span class="fu">annotation_task</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  faces, <span class="at">classes =</span> emotions,</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">questions =</span> <span class="fu">annotation_questions</span>(<span class="fu">c</span>(<span class="st">&quot;face_check&quot;</span>, <span class="st">&quot;emotion&quot;</span>, <span class="st">&quot;intensity&quot;</span>)),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">coders =</span> <span class="fu">c</span>(<span class="st">&quot;C01&quot;</span>, <span class="st">&quot;C02&quot;</span>), <span class="at">overlap =</span> <span class="dv">1</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">dir =</span> <span class="st">&quot;faces-round-1&quot;</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>)</span></code></pre></div>
+<p><code>overlap = 1</code> has every coder code every face, which is
+what agreement needs. With <code>overlap = 0.2</code>, a fifth of the
+faces are coded by everyone and the rest are split between the coders.
+Each coder gets the faces in their own random order, set by
+<code>seed</code>.</p>
+<p>The page coders see holds small copies of the frames under neutral
+names, the boxes and the questions: no file names, no scores, and no
+other coder’s answers. <code>items.csv</code> in the task folder says
+which face each item is; keep it for yourself.</p>
+</div>
+<div id="code" class="section level2">
+<h2>Code</h2>
+<p><code>annotate_faces()</code> starts the coding page from R. It runs
+in the background, so R stays free, and saves every answer in
+<code>faces-round-1/results/&lt;coder&gt;.jsonl</code> the moment it is
+given. A coder who closes the page and comes back continues where they
+stopped.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>coding <span class="ot">&lt;-</span> <span class="fu">annotate_faces</span>(task, <span class="at">coder =</span> <span class="st">&quot;C01&quot;</span>)</span></code></pre></div>
+<p>Coders answer with the mouse or the number keys, press Enter for the
+next face, Backspace to undo, the left arrow to go back and S to
+skip.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">annotation_progress</span>(task)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>coding<span class="sc">$</span><span class="fu">stop</span>()</span></code></pre></div>
+<p>For coders on other computers, send them a copy of the
+<code>page</code> folder. Opened from disk, the page keeps answers in
+their browser and ends with <strong>Export annotations</strong>; put the
+exported files into <code>results</code>.</p>
+<p>In a Jupyter notebook, such as Google Colab,
+<code>annotate_faces(task)</code> shows the coding page below the cell
+instead, because a page served from R cannot be reached from a notebook
+running on another computer. Code as above, then click <strong>Copy R
+code</strong> and run the copied line in a new cell:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>answers <span class="ot">&lt;-</span> <span class="fu">read_annotations</span>(task, <span class="st">&quot;te-annotations:eyJzY2hlbWEiOi...&quot;</span>)</span></code></pre></div>
+<p>The line holds every answer given so far; copy it again after more
+coding and keep the last one, as these answers are not saved in
+<code>results</code>.</p>
+</div>
+<div id="read-the-answers-and-check-agreement" class="section level2">
+<h2>Read the answers and check agreement</h2>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>ann <span class="ot">&lt;-</span> <span class="fu">read_annotations</span>(task)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">annotation_agreement</span>(ann)</span></code></pre></div>
+<p><code>annotation_agreement()</code> gives, for each question,
+Krippendorff’s alpha (nominal for categories, interval for ratings),
+Fleiss’ kappa when every face was coded by the same number of coders,
+and the share of coder pairs who agree. A question that was not asked,
+such as the emotion of something that is not a face, counts as missing,
+not as a disagreement.</p>
+</div>
+<div id="compare-the-model-with-the-coders" class="section level2">
+<h2>Compare the model with the coders</h2>
+<p><code>consensus_labels()</code> turns the coders’ answers into one
+label per face, the most common one, with ties left out. Faces most
+coders marked as not a face have no emotion label.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>truth <span class="ot">&lt;-</span> <span class="fu">consensus_labels</span>(ann, <span class="st">&quot;emotion&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>truth <span class="ot">&lt;-</span> truth[<span class="sc">!</span><span class="fu">is.na</span>(truth<span class="sc">$</span>label), ]</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>scores <span class="ot">&lt;-</span> <span class="fu">face_scores</span>(faces, <span class="at">classes =</span> emotions)</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>both <span class="ot">&lt;-</span> <span class="fu">merge</span>(truth, scores, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;source&quot;</span>, <span class="st">&quot;frame_index&quot;</span>, <span class="st">&quot;face&quot;</span>))</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>both<span class="sc">$</span>pred <span class="ot">&lt;-</span> emotions[<span class="fu">max.col</span>(both[emotions])]</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a><span class="fu">evaluate_emotions</span>(both, <span class="at">id_col =</span> <span class="st">&quot;item_id&quot;</span>, <span class="at">truth_col =</span> <span class="st">&quot;label&quot;</span>, <span class="at">pred_col =</span> <span class="st">&quot;pred&quot;</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>                  <span class="at">probs_cols =</span> emotions, <span class="at">classes =</span> emotions)</span></code></pre></div>
+</div>
+<div id="review-a-models-errors" class="section level2">
+<h2>Review a model’s errors</h2>
+<p>A task can also hold video clips, images or texts instead of single
+faces. That is the way to look at a model’s errors: which clips it gets
+wrong, and why. Give <code>annotation_task()</code> the items as a data
+frame: the clip (<code>media</code>), its text, the dataset’s
+<code>label</code>, the model’s <code>prediction</code> and its scores,
+one column per class.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>emotions <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;angry&quot;</span>, <span class="st">&quot;fearful&quot;</span>, <span class="st">&quot;happy&quot;</span>, <span class="st">&quot;sad&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>items <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">id =</span> errors<span class="sc">$</span>clip, <span class="at">media =</span> errors<span class="sc">$</span>path, <span class="at">text =</span> errors<span class="sc">$</span>description,</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>                    <span class="at">label =</span> errors<span class="sc">$</span>label, <span class="at">prediction =</span> errors<span class="sc">$</span>predicted, errors[, emotions])</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>review <span class="ot">&lt;-</span> <span class="fu">annotation_task</span>(<span class="at">items =</span> items, <span class="at">classes =</span> emotions, <span class="at">coders =</span> <span class="fu">c</span>(<span class="st">&quot;C01&quot;</span>, <span class="st">&quot;C02&quot;</span>),</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>                          <span class="at">dir =</span> <span class="st">&quot;error-review&quot;</span>)</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="fu">annotate_faces</span>(review, <span class="at">coder =</span> <span class="st">&quot;C01&quot;</span>)</span></code></pre></div>
+<p>Each item shows four frames of the clip with the faces found in them
+(the solid box is the largest face, the one <code>video_scores()</code>
+scores by default), the clip itself with its sound, and its text. The
+coder first says which emotion they see; only then are the dataset’s
+label, the model’s answer and its scores shown
+(<code>blind = TRUE</code>), with a second question: what explains the
+result? The model is wrong, the label is debatable, the wrong face was
+scored, no face is visible, or the model and the label agree.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>answers <span class="ot">&lt;-</span> <span class="fu">read_annotations</span>(review)</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="fu">table</span>(answers<span class="sc">$</span>value[answers<span class="sc">$</span>question <span class="sc">==</span> <span class="st">&quot;why&quot;</span>])</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co"># The coders&#39; label for each clip, against the dataset&#39;s label and against the model</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>consensus <span class="ot">&lt;-</span> <span class="fu">consensus_labels</span>(answers)</span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="fu">evaluate_emotions</span>(consensus, <span class="at">truth_col =</span> <span class="st">&quot;reference&quot;</span>, <span class="at">pred_col =</span> <span class="st">&quot;label&quot;</span>)</span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="fu">evaluate_emotions</span>(consensus, <span class="at">truth_col =</span> <span class="st">&quot;label&quot;</span>, <span class="at">pred_col =</span> <span class="st">&quot;prediction&quot;</span>)</span></code></pre></div>
+<p>Unlike a face task, this page holds the texts, labels and scores, so
+share it only with people who may see them.</p>
+</div>
+<div id="privacy" class="section level2">
+<h2>Privacy</h2>
+<p>Faces are personal data, and grouping them by person is biometric
+processing. Everything here runs on your computer: the pages are served
+by R to your own browser only, make no outside requests, and the face
+embeddings used to group people are never saved. Share task folders only
+with people who may see the footage, and use
+<code>identify = FALSE</code> in <code>detect_faces()</code> to skip
+grouping by person.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
