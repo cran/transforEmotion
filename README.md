@@ -1,4 +1,4 @@
-### CRAN 0.1.7 | GitHub 0.1.8
+### CRAN 0.1.8 | GitHub 0.1.9
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![R-CMD-check](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml/badge.svg)](https://github.com/atomashevic/transforEmotion/actions/workflows/r.yml) [![Downloads Total](https://cranlogs.r-pkg.org/badges/grand-total/transforEmotion?color=brightgreen)](https://cran.r-project.org/package=transforEmotion) [![DOI](https://img.shields.io/badge/DOI-10.5117%2FCCR2026.2.2.TOMA-blue)](https://doi.org/10.5117/CCR2026.2.2.TOMA) [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa)](https://github.com/sponsors/atomashevic)
 
@@ -148,7 +148,7 @@ transformer_scores(
 
 The `rag` function  is designed to enhance text generation using Retrieval-Augmented Generation (RAG) techniques. This function allows users to input text data or specify a path to local PDF files, which are then used to retrieve relevant documents.
 
-Supported local LLMs include TinyLLAMA, Gemma3‑1B/4B, Qwen3‑1.7B, and Ministral‑3B via HuggingFace — no Ollama required. Specifically: `google/gemma-3-1b-it`, `google/gemma-3-4b-it`, `Qwen/Qwen3-1.7B-Instruct`, and `ministral/Ministral-3b-instruct`. The default model is TinyLLAMA for speed.
+Supported local LLMs include TinyLLAMA, Gemma3‑1B/4B, Qwen2.5‑1.5B/3B, Qwen3‑1.7B, and Ministral‑3B via HuggingFace — no Ollama required. Specifically: `google/gemma-3-1b-it`, `google/gemma-3-4b-it`, `Qwen/Qwen2.5-1.5B-Instruct`, `Qwen/Qwen2.5-3B-Instruct`, `Qwen/Qwen3-1.7B-Instruct`, and `ministral/Ministral-3b-instruct`. The default model is TinyLLAMA for speed. Gemma 3 is gated (a Hugging Face token is needed) and requires transformers >= 4.50; Qwen 2.5 is not gated and works with the transformers version the package installs.
 
 Here's an example based on the decription of this package. First, we specify the text data.
 
@@ -189,7 +189,7 @@ The transforEmotion package can be used to implement these models and other
 zero-shot classification model pipelines from the HuggingFace library.>
 ```
 
-Supported local LLMs include TinyLLAMA, Gemma3‑1B/4B, Qwen3‑1.7B, and Ministral‑3B via HuggingFace — no Ollama required. Specifically: `google/gemma-3-1b-it`, `google/gemma-3-4b-it`, `Qwen/Qwen3-1.7B-Instruct`, and `ministral/Ministral-3b-instruct`.
+Supported local LLMs include TinyLLAMA, Gemma3‑1B/4B, Qwen2.5‑1.5B/3B, Qwen3‑1.7B, and Ministral‑3B via HuggingFace — no Ollama required. Specifically: `google/gemma-3-1b-it`, `google/gemma-3-4b-it`, `Qwen/Qwen2.5-1.5B-Instruct`, `Qwen/Qwen2.5-3B-Instruct`, `Qwen/Qwen3-1.7B-Instruct`, and `ministral/Ministral-3b-instruct`.
 
 > [!IMPORTANT] Gemma 3 access
 > - Gemma 3 repos are gated. You must log in to Hugging Face and accept the model license on the model page (e.g., https://huggingface.co/google/gemma-3-1b-it).
@@ -217,14 +217,14 @@ parse_rag_json(j)
 
 ### RAG structured outputs (per-document)
 
-For per-document emotion/sentiment with small local LLMs (Gemma3‑1B/4B), use the convenience wrapper:
+For per-document emotion/sentiment with small local LLMs (Gemma3‑1B/4B or Qwen2.5‑1.5B/3B), use the convenience wrapper:
 
 ```R
 texts <- c(
   "I feel so happy and grateful today!",
   "This is frustrating and makes me angry."
 )
-rag_sentemo(texts, task = "emotion", output = "table", transformer = "Gemma3-1B")
+rag_sentemo(texts, task = "emotion", output = "table", transformer = "Qwen2.5-3B")
 ```
 
 ## VAD Example
